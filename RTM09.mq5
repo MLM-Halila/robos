@@ -28,25 +28,26 @@ string GroupChatId="-564508963";
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM09";
 
-sinput string Versão ="M09 p g h2";                  //
-input double FAKESALDO = 100; //Saldo teste
+sinput string Versão ="M09 F";                  //
+input double SDO_DISPONIVEL = 100; //Saldo teste
 input int METOD_1                 = 2;           //Metodo
 input int METOD_2                 = 6;           //Metodo
 input int MM_media_lenta = 29; //Media gatilho, lenta
 input int MM_media_media = 12; //Media gatilho, intermediaria
 input int MM_media_rapida = 3; //Media gatilho, rapida
 input int Max_dist = 8; //Distancia max para previsão de cruzamento
-input bool inverso             = true;       // Inverter as operações
+input bool inverso             = false;       // Inverter as operações
 input int dias = 15; //Renova saldo
 input int LimLAT = 75; //Limite indicador lateralização
-input int XPROP = 2; //Proporcional ao saldo 0, 1, 2
-input double F_SL_SIZE    =  20;    //%  Tamanho maximo do LOSS
-input double F_MAX_LOTE = .1;          //%  Lote maximo para operar
-input double F_DIA_MAX_USD_GAIN = 2;  //% Max  DIA GAIN (Fecha dia)
-input double F_DIA_MAX_USD_LOSS = 2;  //% Max DIA LOSS (Fecha dia)
+//input 
+int XPROP = 1; //Proporcional ao saldo 0, 1, 2
+input double F_SL_SIZE    =  50;    //Tamanho maximo do LOSS
+input double F_MAX_LOTE = .1;          //Lote maximo para operar
+input double F_DIA_MAX_USD_GAIN = 0;  //% Max  DIA GAIN (Fecha dia)
+input double F_DIA_MAX_USD_LOSS = 0;  //% Max DIA LOSS (Fecha dia)
 input double F_CUR_MAX_USD_GAIN = 0;  //% OP Max SALDO GAIN
 input double F_CUR_MAX_USD_LOSS = 0;  //% OP Max SALDO LOSS
-input bool XTRS = false; // Trailing stops
+input bool XTRS = true; // Trailing stops
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -304,7 +305,7 @@ int OnInit()
    m_trade.SetExpertMagicNumber(O_magic_number);
    Q_Oper = 0;
    Q_TRs = 0;
-   SALDOINI = FAKESALDO;
+   SALDOINI = SDO_DISPONIVEL;
    SALDO_Rev();
    SDO_INI_ROBO = SALDO_Corrigido();
 //   Print("SDO_INI ",SDO_INI_ROBO);
@@ -346,14 +347,8 @@ int OnInit()
    buy_price = highest_high;
    sell_price = lowest_low;
    SDO_CANDLE_A = SALDO_Corrigido();
-   double SDO1 = SALDO_Corrigido();
-   SL_SIZE = NormalizeDouble((SDO1 * F_SL_SIZE / 100),2);
-   MAX_LOTE = NormalizeDouble((SDO1 * F_MAX_LOTE / 100),2);
-   DIA_MAX_USD_GAIN = NormalizeDouble((SDO1 * F_DIA_MAX_USD_GAIN / 100),2);
-   DIA_MAX_USD_LOSS = NormalizeDouble((SDO1 * F_DIA_MAX_USD_LOSS / 100),2);
-   CUR_MAX_USD_GAIN = NormalizeDouble((SDO1 * F_CUR_MAX_USD_GAIN / 100),2);
-   CUR_MAX_USD_LOSS = NormalizeDouble((SDO1 * F_CUR_MAX_USD_LOSS / 100),2);
-
+   PROPORCIONAL();
+/*
    Print("SDO1 ",SDO1);
    Print("SL_SIZE ",SL_SIZE);
    Print("MAX_LOTE ",MAX_LOTE);
@@ -361,6 +356,7 @@ int OnInit()
    Print("DIA_MAX_USD_LOSS ",DIA_MAX_USD_LOSS);
    Print("CUR_MAX_USD_GAIN ",CUR_MAX_USD_GAIN);
    Print("CUR_MAX_USD_LOSS ",CUR_MAX_USD_LOSS);
+*/
    STR_SDO_INI_OPER = SALDO_Corrigido();
    MOSTRA();
 // LATERAL
@@ -487,6 +483,7 @@ void OnTick()
    bool NewCandle = TemosNewCandle();
    if((NewCandle==true)&&(X_ExpertRemove==false))
      {
+      PROPORCIONAL();
       //      Print("PONTO ",SymbolInfoDouble(Symbol(), SYMBOL_POINT));
       datetime now = TimeCurrent();
       if(now > allowed_until)
@@ -1123,9 +1120,9 @@ double SALDO_Corrigido()
 void SALDO_Rev()
   {
    INVERSO_SALDOINI = 0;
-   if(FAKESALDO > 0)
+   if(SDO_DISPONIVEL > 0)
      {
-      SALDOINI = FAKESALDO;
+      SALDOINI = SDO_DISPONIVEL;
      }
    if(SALDOINI > 0)
      {
@@ -2654,15 +2651,15 @@ int SAME_dir2()
    int DMG = VerificarDirecaoEMA(MM_media_lenta, Max_dist);
    int PDR = CheckPriceDirection();
    Print("MET 8 "," DMP ",DMP," DMM ",DMM," DMG ",DMG," PDR ",PDR);
-   if(DMP == DMM) 
+   if(DMP == DMM)
      {
       OPO = DMP;
      }
-   if(DMP == DMG) 
+   if(DMP == DMG)
      {
       OPO = DMP;
      }
-   if(DMM == DMG) 
+   if(DMM == DMG)
      {
       OPO = DMM;
      }
@@ -3622,6 +3619,19 @@ int CheckBollingerSignal(string symbol, ENUM_TIMEFRAMES timeframe, int period, d
       return 1;
 
    return 0;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void PROPORCIONAL()
+  {
+   double SDO_AT = SALDO_Corrigido();
+   SL_SIZE = NormalizeDouble(PrSdo(F_SL_SIZE),2);
+   MAX_LOTE = NormalizeDouble(PrSdo(F_MAX_LOTE),2);
+   DIA_MAX_USD_GAIN = NormalizeDouble((SDO_AT * F_DIA_MAX_USD_GAIN / 100),2);
+   DIA_MAX_USD_LOSS = NormalizeDouble((SDO_AT * F_DIA_MAX_USD_LOSS / 100),2);
+   CUR_MAX_USD_GAIN = NormalizeDouble((SDO_AT * F_CUR_MAX_USD_GAIN / 100),2);
+   CUR_MAX_USD_LOSS = NormalizeDouble((SDO_AT * F_CUR_MAX_USD_LOSS / 100),2);
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
