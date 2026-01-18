@@ -23,38 +23,34 @@ string GroupChatId="-564508963";
 //input ENUM_TIMEFRAMES tempoG = PERIOD_M5; // Periodicidade
 
 //+------------------------------------------------------------------+
-//1 PEQ GOLD M15
-//3 MAX DIA GAIN
+//1 PEQ GOLD M15 (fixo 200)
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM09";
 
-sinput string Versão ="M09 8";                  //
-input double SDO_DISPONIVEL = 200; //Saldo teste
+sinput string Versão ="M09 1";                  //
+
 input int METOD_1                 = 3;           //Metodo
-input int METOD_2                 = 1;           //Metodo
+input int METOD_2                 = 6;           //Metodo
 input int MM_media_lenta = 29; //Media gatilho, lenta
-input int MM_media_media = 7; //Media gatilho, intermediaria
+input int MM_media_media = 12; //Media gatilho, intermediaria
 input int MM_media_rapida = 3; //Media gatilho, rapida
 input int Max_dist = 8; //Distancia max para previsão de cruzamento
 input bool inverso             = false;       // Inverter as operações
-input int dias = 10; //Renova saldo
-input int LimLAT = 85; //Limite indicador lateralização
-input int XPROP = 0; //Proporcional ao saldo 0, 1, 2
-input double F_SL_SIZE    =  35;    //Tamanho maximo do LOSS
-input double F_MAX_LOTE = .06;          //Lote maximo para operar
-input double F_DIA_MAX_USD_GAIN = 0;  //% Max  DIA GAIN (Fecha dia)
-input double F_DIA_MAX_USD_LOSS = 0;  //% Max DIA LOSS (Fecha dia)
-input double F_CUR_MAX_USD_GAIN = 0;  //% OP Max SALDO GAIN
-input double F_CUR_MAX_USD_LOSS = 0;  //% OP Max SALDO LOSS
-input bool XTRS = true; // Trailing stops
-input double FS_lote = 2000; //LOTE = SDO_DISPONIVEL / fator
+input int dias = 15; //Renova saldo
+input int LimLAT = 75; //Limite indicador lateralização
+input int XPROP = 2; //Proporcional ao saldo 0, 1, 2
+input double F_SL_SIZE    =  20;    //%  Tamanho maximo do LOSS (USD)
+input double F_MAX_LOTE = 0.02;          //%  Lote maximo para operar
+input double F_DIA_MAX_USD_LOSS = 30;  //%  Max USD DIA LOSS (Fecha dia)
+input double F_CUR_MAX_USD_GAIN = 0;  //%  OP Max USD SALDO GAIN
+input double F_CUR_MAX_USD_LOSS = 0;  //%  OP Max USD SALDO LOSS
+
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-double SL_SIZE    =  0;    // Tamanho maximo do LOSS (USD)
+double SL_SIZE    =  2000;    // Tamanho maximo do LOSS (USD)
 double MAX_LOTE = 5;          // Lote maximo para operar
 double DIA_MAX_USD_LOSS = 0;  // Max USD DIA LOSS (Fecha dia)
-double DIA_MAX_USD_GAIN = 0;  // Max USD DIA LOSS (Fecha dia)
 double CUR_MAX_USD_GAIN = 0;  // OP Max USD SALDO GAIN
 double CUR_MAX_USD_LOSS = 0;  // OP Max USD SALDO LOSS
 
@@ -68,10 +64,11 @@ bool usainv             = false;       // Auto invert
 int Q_OP_simult                   = 1;           // Quant. máxima de operações simultaneas
 int TempoVS            = 60;           // Segundos entre revisão de oper.
 bool addSPREAD            = true;       // Add SPREAD
+double DIA_MAX_USD_GAIN = 0;  // Max USD DIA GAIN (Fecha dia)
 bool OPTC = true; //OPTC
 bool OPTM = true; //OPTM
 bool OPTD = false; //OPTD3
-
+bool XTRS = false; // Trailing stops
 double Gfat = 1; //X Gfat
 double Lfat = 1.1; //X Lfat
 double OPR_MAX_Perc_GAIN = 150;  // Max perc OPER GAIN (Abre outra oper)
@@ -305,10 +302,9 @@ int OnInit()
    m_trade.SetExpertMagicNumber(O_magic_number);
    Q_Oper = 0;
    Q_TRs = 0;
-   SALDOINI = SDO_DISPONIVEL;
    SALDO_Rev();
    SDO_INI_ROBO = SALDO_Corrigido();
-//   Print("SDO_INI ",SDO_INI_ROBO);
+//   //T Print("SDO_INI ",SDO_INI_ROBO);
    TimeToStruct(TimeCurrent(),lastDate);
    SDO_INI_DIA = SALDO_Corrigido();
    SDO_INI_CUR = SALDO_Corrigido();
@@ -347,17 +343,13 @@ int OnInit()
    buy_price = highest_high;
    sell_price = lowest_low;
    SDO_CANDLE_A = SALDO_Corrigido();
-   PROPORCIONAL();
-/*
-   Print("SDO1 ",SDO1);
-   Print("SL_SIZE ",SL_SIZE);
-   Print("MAX_LOTE ",MAX_LOTE);
-   Print("DIA_MAX_USD_GAIN ",DIA_MAX_USD_GAIN);
-   Print("DIA_MAX_USD_LOSS ",DIA_MAX_USD_LOSS);
-   Print("CUR_MAX_USD_GAIN ",CUR_MAX_USD_GAIN);
-   Print("CUR_MAX_USD_LOSS ",CUR_MAX_USD_LOSS);
-*/
-   STR_SDO_INI_OPER = SALDO_Corrigido();
+//   double SDO1 = SALDO_Corrigido();
+   double SDO1 = 200;
+   SL_SIZE = NormalizeDouble((SDO1 * F_SL_SIZE / 100),2);
+   MAX_LOTE = NormalizeDouble((SDO1 * F_MAX_LOTE / 100),2);
+   DIA_MAX_USD_LOSS = NormalizeDouble((SDO1 * F_DIA_MAX_USD_LOSS / 100),2);
+   CUR_MAX_USD_GAIN = NormalizeDouble((SDO1 * F_CUR_MAX_USD_GAIN / 100),2);
+   CUR_MAX_USD_LOSS = NormalizeDouble((SDO1 * F_CUR_MAX_USD_LOSS / 100),2);
    MOSTRA();
 // LATERAL
    atr_handle    = iATR(_Symbol,_Period,14);
@@ -365,7 +357,7 @@ int OnInit()
 
    if(atr_handle==INVALID_HANDLE || ma_atr_handle==INVALID_HANDLE)
      {
-      Print("Erro ao criar indicadores");
+      //T Print("Erro ao criar indicadores");
       return(INIT_FAILED);
      }
    return(INIT_SUCCEEDED);
@@ -394,7 +386,7 @@ void OnTick()
    if(Quant_Dias(dias, lastCheck))
      {
       qpr ++;
-      //      Print("QPR ",qpr);
+      //      //T Print("QPR ",qpr);
       double TMP_SDO = AccountInfoDouble(ACCOUNT_EQUITY) - INVERSO_SALDOINI;
       double psdo = TMP_SDO;
       if(TMP_SDO > STR_SDO_INI_ROBO)
@@ -405,7 +397,7 @@ void OnTick()
       SDO_INI_ROBO = TMP_SDO;
       SDO_INI_DIA = TMP_SDO;
       SDO_INI_CUR = TMP_SDO;
-      //      Print(" dias : ",dias," q : ",qpr," Ant: ",psdo," Cur : ",TMP_SDO," Ini :", STR_SDO_INI_ROBO," Sav: ",STR_SDO_SALVO);
+      //      //T Print(" dias : ",dias," q : ",qpr," Ant: ",psdo," Cur : ",TMP_SDO," Ini :", STR_SDO_INI_ROBO," Sav: ",STR_SDO_SALVO);
      }
    if(HasDateChanged())
      {
@@ -426,7 +418,7 @@ void OnTick()
             CUR_INVER = false;
            }
         }
-      //      Print("INV: ",CUR_INVER);
+      //      //T Print("INV: ",CUR_INVER);
 
       SDO_INI_DIA = SALDO_Corrigido();
       DIA_FIM = false;
@@ -439,36 +431,28 @@ void OnTick()
       if(XS == "xDG")
         {
          Oque = "FIM DIA GAIN";
-         Print("---> ", Oque);
+         //T Print("---> ", Oque);
          Close_all_Orders();
          DIA_FIM = true;
-
-
-         ExpertRemove();
-
-
         }
       if(XS == "xDL")
         {
          Oque = "FIM DIA LOSS";
-         Print("---> ", Oque);
+         //T Print("---> ", Oque);
          Close_all_Orders();
          DIA_FIM = true;
-
-         ExpertRemove();
-
         }
       if(XS == "xFG")
         {
          Oque = "FIM OPS GAIN";
-         Print("---> ", Oque);
+         //T Print("---> ", Oque);
          Close_all_Orders();
          STR_SDO_INI_OPER = SALDO_Corrigido();
         }
       if(XS == "xFL")
         {
          Oque = "FIM OPS LOSS";
-         Print("---> ", Oque);
+         //T Print("---> ", Oque);
          Close_all_Orders();
          STR_SDO_INI_OPER = SALDO_Corrigido();
         }
@@ -483,12 +467,11 @@ void OnTick()
    bool NewCandle = TemosNewCandle();
    if((NewCandle==true)&&(X_ExpertRemove==false))
      {
-      PROPORCIONAL();
-      //      Print("PONTO ",SymbolInfoDouble(Symbol(), SYMBOL_POINT));
+      //      //T Print("PONTO ",SymbolInfoDouble(Symbol(), SYMBOL_POINT));
       datetime now = TimeCurrent();
       if(now > allowed_until)
         {
-         Print("EA timeout limit verified");
+         //T Print("EA timeout limit verified");
          ExpertRemove();
         }
       /*      CrossProjectionResult r = ProjectMACross(_Symbol, tempoG,
@@ -503,7 +486,7 @@ void OnTick()
 
                string sig = (r.tradeSignal==1 ? "Compra" : (r.tradeSignal==2 ? "Venda" : "Neutro"));
 
-               Print("Cruzamento em ", r.barsToCross," Ac: ",Max_dist," ",sig);
+               //T Print("Cruzamento em ", r.barsToCross," Ac: ",Max_dist," ",sig);
               }
             else
               {
@@ -515,7 +498,7 @@ void OnTick()
       dls = ObjectDelete(0, "NOP");
       //      MOSTRA_SIT("NC");
       Qcandle++;
-      //      Print("CvAR ",TimeCurrent()," ",Qcandle," ",DoubleToString((SALDO_Corrigido()-SDO_CANDLE_A),2));
+      //      //T Print("CvAR ",TimeCurrent()," ",Qcandle," ",DoubleToString((SALDO_Corrigido()-SDO_CANDLE_A),2));
       SDO_CANDLE_A = SALDO_Corrigido();
       V_CURRENT_ASK = SymbolInfoDouble(Symbol(),SYMBOL_ASK);
       V_CURRENT_BID = SymbolInfoDouble(Symbol(),SYMBOL_BID);
@@ -594,15 +577,288 @@ void COMPRA_OU_VENDA()
         {
          qop = qop--;
         }
-      //      Print ("T"," NOPS ",qop," ",SALDO_Corrigido());
       if(qop < Q_OP_simult)
         {
          if(SALDO_Corrigido() > -SALDOINI)
            {
-            NWOP = METODOS(METOD_1);
-            if((NWOP == 0) && (METOD_1 != METOD_2))
+            if((METOD_1 == 1) || (METOD_1 == 0))
               {
-               NWOP = METODOS(METOD_2);
+               if((NWOP == 0) && (OPTD==true))
+                 {
+                  V_CURRENT_ASK = SymbolInfoDouble(Symbol(),SYMBOL_ASK);
+                  V_CURRENT_BID = SymbolInfoDouble(Symbol(),SYMBOL_BID);
+                  SPREAD = V_CURRENT_ASK - V_CURRENT_BID;
+                  int DMP = VerificarDirecaoEMA(MM_media_rapida, Max_dist);
+                  int DMM = VerificarDirecaoEMA(MM_media_media, Max_dist);
+                  int DMG = VerificarDirecaoEMA(MM_media_lenta, Max_dist);
+                  if((DMP == DMM) && (DMM == DMG))
+                    {
+                     NWOP = DMP;
+                    }
+                  if(NWOP >0)
+                    {
+                     ////T Print("NWOP ",NWOP," ===");
+                    }
+                 }
+               if((NWOP == 0) && (OPTM==true))
+                 {
+                  NWOP = DetectaCruzamentoMACD(3, 10, 15, PRICE_CLOSE);
+                  if(NWOP >0)
+                    {
+                     ////T Print("NWOP ",NWOP," MAC");
+                    }
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = CROSS_MEDIAS(_Symbol, MM_media_rapida, MM_media_lenta);
+                  if(NWOP > 0)
+                    {
+                     ////T Print("NWOP ",NWOP," CRL");
+                    }
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = GUESS(MM_media_rapida, MM_media_lenta);
+                  if(NWOP > 0)
+                    {
+                     ////T Print("NWOP ",NWOP," GRL");
+                    }
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = CROSS_MEDIAS(_Symbol, MM_media_rapida, MM_media_media);
+                  if(NWOP > 0)
+                    {
+                     ////T Print("NWOP ",NWOP," CRM");
+                    }
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = GUESS(MM_media_rapida, MM_media_media);
+                  if(NWOP > 0)
+                    {
+                     ////T Print("NWOP ",NWOP," GRM");
+                    }
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = CROSS_MEDIAS(_Symbol, MM_media_media, MM_media_lenta);
+                  if(NWOP > 0)
+                    {
+                     ////T Print("NWOP ",NWOP," CML");
+                    }
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = GUESS(MM_media_media, MM_media_lenta);
+                  if(NWOP > 0)
+                    {
+                     ////T Print("NWOP ",NWOP," GML");
+                    }
+                 }
+              }
+            if((METOD_1 == 2) || (METOD_1 == 0))
+              {
+               if(NWOP == 0)
+                 {
+                  NWOP = PROX_DA_MEDIA(MM_media_rapida);
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = PROX_DA_MEDIA(MM_media_media);
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = PROX_DA_MEDIA(MM_media_lenta);
+                 }
+              }
+            if((METOD_1 == 3) || (METOD_1 == 0))
+              {
+               if(NWOP == 0)
+                 {
+                  NWOP = GAIN_AG(MM_media_rapida);
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = GAIN_AG(MM_media_media);
+                 }
+               if(NWOP == 0)
+                 {
+                  NWOP = GAIN_AG(MM_media_lenta);
+                 }
+              }
+            if((METOD_1 == 4) || (METOD_1 == 0))
+              {
+               if(NWOP == 0)
+                 {
+                  NWOP = CheckBollingerSignal(Symbol(), PERIOD_CURRENT, 20, 2);
+                 }
+              }
+            if((METOD_1 == 5) || (METOD_1 == 0))
+              {
+               if(NWOP == 0)
+                 {
+                  NWOP = CheckMACDCross(
+                            _Symbol,
+                            _Period,
+                            MM_media_rapida,    // fast EMA
+                            MM_media_lenta,    // slow EMA
+                            MM_media_media,     // signal SMA
+                            PRICE_CLOSE,
+                            2,     // shift_previous (two bars ago)
+                            1      // shift_current (one bar ago)
+                         );
+                 }
+              }
+            if((METOD_1 == 6) || (METOD_1 == 0))
+              {
+               if(NWOP == 0)
+                 {
+                  double dist;
+                  bool  ma_up, price_above;
+                  NWOP = GetMeanReversionSignal(55, PERIOD_CURRENT, dist, ma_up, price_above);
+                 }
+              }
+            if(NWOP == 0)
+              {
+               if((METOD_2 == 1) || (METOD_2 == 0))
+                 {
+                  if((NWOP == 0) && (OPTD==true))
+                    {
+                     V_CURRENT_ASK = SymbolInfoDouble(Symbol(),SYMBOL_ASK);
+                     V_CURRENT_BID = SymbolInfoDouble(Symbol(),SYMBOL_BID);
+                     SPREAD = V_CURRENT_ASK - V_CURRENT_BID;
+                     int DMP = VerificarDirecaoEMA(MM_media_rapida, Max_dist);
+                     int DMM = VerificarDirecaoEMA(MM_media_media, Max_dist);
+                     int DMG = VerificarDirecaoEMA(MM_media_lenta, Max_dist);
+                     if((DMP == DMM) && (DMM == DMG))
+                       {
+                        NWOP = DMP;
+                       }
+                     if(NWOP >0)
+                       {
+                        ////T Print("NWOP ",NWOP," ===");
+                       }
+                    }
+                  if((NWOP == 0) && (OPTM==true))
+                    {
+                     NWOP = DetectaCruzamentoMACD(3, 10, 15, PRICE_CLOSE);
+                     if(NWOP >0)
+                       {
+                        ////T Print("NWOP ",NWOP," MAC");
+                       }
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = CROSS_MEDIAS(_Symbol, MM_media_rapida, MM_media_lenta);
+                     if(NWOP > 0)
+                       {
+                        ////T Print("NWOP ",NWOP," CRL");
+                       }
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = GUESS(MM_media_rapida, MM_media_lenta);
+                     if(NWOP > 0)
+                       {
+                        ////T Print("NWOP ",NWOP," GRL");
+                       }
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = CROSS_MEDIAS(_Symbol, MM_media_rapida, MM_media_media);
+                     if(NWOP > 0)
+                       {
+                        ////T Print("NWOP ",NWOP," CRM");
+                       }
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = GUESS(MM_media_rapida, MM_media_media);
+                     if(NWOP > 0)
+                       {
+                        ////T Print("NWOP ",NWOP," GRM");
+                       }
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = CROSS_MEDIAS(_Symbol, MM_media_media, MM_media_lenta);
+                     if(NWOP > 0)
+                       {
+                        ////T Print("NWOP ",NWOP," CML");
+                       }
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = GUESS(MM_media_media, MM_media_lenta);
+                     if(NWOP > 0)
+                       {
+                        ////T Print("NWOP ",NWOP," GML");
+                       }
+                    }
+                 }
+               if((METOD_2 == 2) || (METOD_2 == 0))
+                 {
+                  if(NWOP == 0)
+                    {
+                     NWOP = PROX_DA_MEDIA(MM_media_rapida);
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = PROX_DA_MEDIA(MM_media_media);
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = PROX_DA_MEDIA(MM_media_lenta);
+                    }
+                 }
+               if((METOD_2 == 3) || (METOD_2 == 0))
+                 {
+                  if(NWOP == 0)
+                    {
+                     NWOP = GAIN_AG(MM_media_rapida);
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = GAIN_AG(MM_media_media);
+                    }
+                  if(NWOP == 0)
+                    {
+                     NWOP = GAIN_AG(MM_media_lenta);
+                    }
+                 }
+               if((METOD_2 == 4) || (METOD_2 == 0))
+                 {
+                  if(NWOP == 0)
+                    {
+                     NWOP = CheckBollingerSignal(Symbol(), PERIOD_CURRENT, 20, 2);
+                    }
+                 }
+               if((METOD_2 == 5) || (METOD_2 == 0))
+                 {
+                  if(NWOP == 0)
+                    {
+                     NWOP = CheckMACDCross(
+                               _Symbol,
+                               _Period,
+                               MM_media_rapida,    // fast EMA
+                               MM_media_lenta,    // slow EMA
+                               MM_media_media,     // signal SMA
+                               PRICE_CLOSE,
+                               2,     // shift_previous (two bars ago)
+                               1      // shift_current (one bar ago)
+                            );
+                    }
+                 }
+               if((METOD_2 == 6) || (METOD_2 == 0))
+                 {
+                  if(NWOP == 0)
+                    {
+                     double dist;
+                     bool  ma_up, price_above;
+                     NWOP = GetMeanReversionSignal(55, PERIOD_CURRENT, dist, ma_up, price_above);
+                    }
+                 }
               }
             int tdr = 0;
             if(NWOP > 0)
@@ -626,7 +882,7 @@ void COMPRA_OU_VENDA()
                     {
                      tdr = 2;
                     }
-                  //            Print("NWOP ",NWOP," tdr ",tdr);
+                  //            //T Print("NWOP ",NWOP," tdr ",tdr);
                   if(tdr != NWOP)
                     {
                      NWOP = 0;
@@ -649,7 +905,7 @@ void COMPRA_OU_VENDA()
               }
             if(NWOP > 0)
               {
-               //Print("OPS a ",CUR_OP," n ",NWOP);
+               ////T Print("OPS a ",CUR_OP," n ",NWOP);
               }
             if((OPTC == true) && (CUR_OP > 0) && (CUR_OP != NWOP))
               {
@@ -753,7 +1009,7 @@ void OrderVENDA()
 void Place_Order(MqlTradeRequest &requisicao)
   {
    Oque = IntegerToString(C_V);
-//   Print("Q ",qm++," Place_Order ", Oque," (", TENDENCIA_c_v,") Price ",requisicao.price," StopLoss ",requisicao.sl," StopGain ",requisicao.tp);
+//   //T Print("Q ",qm++," Place_Order ", Oque," (", TENDENCIA_c_v,") Price ",requisicao.price," StopLoss ",requisicao.sl," StopGain ",requisicao.tp);
    MqlTradeCheckResult checkResult;
    MqlTradeResult resposta;
    bool SalvaOper = true;
@@ -803,23 +1059,23 @@ void Place_Order(MqlTradeRequest &requisicao)
                   if(erro == 4756)
                     {
                      quanterro++;
-                     //                     Print("Err4756 ",quanterro);
+                     //                     //T Print("Err4756 ",quanterro);
                     }
                   SalvaOper = false;
-                  //                  Print("Erro 1 ao enviar Ordem ", resposta.request_id," do tipo ", requisicao.type, ". Erro = ", erro, " C_V ",C_V);
+                  //                  //T Print("Erro 1 ao enviar Ordem ", resposta.request_id," do tipo ", requisicao.type, ". Erro = ", erro, " C_V ",C_V);
                   ResetLastError();
                  }
               }
             else
               {
-               //               Print("Erro 2 ao enviar Ordem ", resposta.request_id," do tipo ", requisicao.type, ". Erro = ", erro, " C_V ",C_V);
+               //               //T Print("Erro 2 ao enviar Ordem ", resposta.request_id," do tipo ", requisicao.type, ". Erro = ", erro, " C_V ",C_V);
                ResetLastError();
               }
            }
          else
            {
             erro = GetLastError();
-            //            Print("Erro 3 ao enviar Ordem ", resposta.request_id," do tipo ", requisicao.type, ". Erro = ", erro, " C_V ",C_V);
+            //            //T Print("Erro 3 ao enviar Ordem ", resposta.request_id," do tipo ", requisicao.type, ". Erro = ", erro, " C_V ",C_V);
             ResetLastError();
            }
         }
@@ -834,7 +1090,7 @@ void Place_Order(MqlTradeRequest &requisicao)
 //+------------------------------------------------------------------+
 void Close_Order()
   {
-//   Print("-- FECHA ", Oque);
+//   //T Print("-- FECHA ", Oque);
    bool falhou = false;
    for(int i=PositionsTotal()-1; i>=0; i--)
      {
@@ -845,7 +1101,7 @@ void Close_Order()
             if(!m_trade.PositionClose(m_position.Ticket()))
               {
                falhou = true;
-               //               Print("Fecha ","-- FALHOU--- ",m_trade.ResultRetcodeDescription());
+               //               //T Print("Fecha ","-- FALHOU--- ",m_trade.ResultRetcodeDescription());
               }
            }
         }
@@ -872,7 +1128,6 @@ void Close_all_Orders()
         {
          if(m_position.Symbol() == _Symbol && m_position.Magic() == O_magic_number)
            {
-            Print("CLOSE ",PositionGetString(POSITION_COMMENT));
             Close_Order();
            }
         }
@@ -888,7 +1143,7 @@ void SALVA_TKpreco(double VAL, int QTO)
       TKpreco[i] = TKpreco[i-1];
      }
    TKpreco[0] = VAL;
-//   Print ("VAL: ",VAL);
+//   //T Print ("VAL: ",VAL);
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -900,53 +1155,49 @@ string ABOUT_SDOS()
    double CUR_Perc_V = 0;
    DIA_Perc_V = ((100 * (SALDO_Corrigido() / SDO_INI_DIA)) - 100);
    CUR_Perc_V = ((100 * (SALDO_Corrigido() / SDO_INI_CUR)) - 100);
-   /*   if((DIA_Perc_V > 0) || (CUR_Perc_V> 0))
-        {
-   //      Print("PERCS ",DIA_Perc_V," ",CUR_Perc_V);
-        }
-      if(CUR_Perc_V > MaiorPERC)
-        {
-         MaiorPERC = CUR_Perc_V;
-        }
-      if(MenorPERC == 0)
-        {
-         MenorPERC = CUR_Perc_V;
-        }
-      if(CUR_Perc_V < MenorPERC)
-        {
-         MenorPERC = CUR_Perc_V;
-        }
+   if(CUR_Perc_V > MaiorPERC)
+     {
+      MaiorPERC = CUR_Perc_V;
+     }
+   if(MenorPERC == 0)
+     {
+      MenorPERC = CUR_Perc_V;
+     }
+   if(CUR_Perc_V < MenorPERC)
+     {
+      MenorPERC = CUR_Perc_V;
+     }
 
-      if(DIA_MAX_Perc_LOSS != 0)
+   if(DIA_MAX_Perc_LOSS != 0)
+     {
+      if(DIA_Perc_V <= -DIA_MAX_Perc_LOSS)
         {
-         if(DIA_Perc_V <= -DIA_MAX_Perc_LOSS)
-           {
-            sit = "xDL";
-           }
+         sit = "xDL";
         }
-      if(DIA_MAX_Perc_GAIN != 0)
+     }
+   if(DIA_MAX_Perc_GAIN != 0)
+     {
+      if(DIA_Perc_V >= DIA_MAX_Perc_GAIN)
         {
-         if(DIA_Perc_V >= DIA_MAX_Perc_GAIN)
-           {
-            sit = "xDG";
-           }
+         sit = "xDG";
         }
-      if(CUR_MAX_Perc_GAIN != 0)
+     }
+   if(CUR_MAX_Perc_GAIN != 0)
+     {
+      if(CUR_Perc_V >= CUR_MAX_Perc_GAIN)
         {
-         if(CUR_Perc_V >= CUR_MAX_Perc_GAIN)
-           {
-            sit = "xFG";
-           }
+         sit = "xFG";
         }
-      if(CUR_MAX_Perc_LOSS != 0)
+     }
+   if(CUR_MAX_Perc_LOSS != 0)
+     {
+      if(CUR_Perc_V <= -CUR_MAX_Perc_LOSS)
         {
-         if(CUR_Perc_V <= -CUR_MAX_Perc_LOSS)
-           {
-            sit = "xFL";
-           }
+         sit = "xFL";
         }
+     }
 
-   */
+///* MH
    if(DIA_MAX_USD_LOSS != 0)
      {
       if((SALDO_Corrigido() - SDO_INI_DIA) <= -DIA_MAX_USD_LOSS)
@@ -972,7 +1223,6 @@ string ABOUT_SDOS()
    if(CUR_MAX_USD_LOSS != 0)
      {
       //      if((SALDO_Corrigido() - SDO_INI_DIA) <= -CUR_MAX_USD_LOSS)
-      //      Print ("T "," Cur ",(SALDO_Corrigido() - STR_SDO_INI_OPER)," <= ", -CUR_MAX_USD_LOSS);
       if((SALDO_Corrigido() - STR_SDO_INI_OPER) <= -CUR_MAX_USD_LOSS)
         {
          sit = "xFL";
@@ -1018,7 +1268,7 @@ void TelMsg()
       DoubleToString(prc,2)+" "+
       DoubleToString(MaiorPERC,2)+" "+
       DoubleToString(MenorPERC,2)+" ";
-//   Print(Telegram_Message);
+//   //T Print(Telegram_Message);
    if(MandaTelegram == true)
      {
       //      SendMessage(InpToken, GroupChatId, Telegram_Message);
@@ -1041,7 +1291,7 @@ void TelMsgXXX()
       "P "+DoubleToString(SALDO_Corrigido(),2)+" "+
       DoubleToString(prc,2)+" "+
       " CANCELADO";
-//   Print(Telegram_Message);
+//   //T Print(Telegram_Message);
    if(MandaTelegram == true)
      {
       //      SendMessage(InpToken, GroupChatId, Telegram_Message);
@@ -1120,159 +1370,11 @@ double SALDO_Corrigido()
 void SALDO_Rev()
   {
    INVERSO_SALDOINI = 0;
-   if(SDO_DISPONIVEL > 0)
-     {
-      SALDOINI = SDO_DISPONIVEL;
-     }
    if(SALDOINI > 0)
      {
       INVERSO_SALDOINI = AccountInfoDouble(ACCOUNT_EQUITY) - SALDOINI;
      }
   }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-int METODOS(int M)
-  {
-   int MOP = 0;
-   if((M == 1) || (M == 0))
-     {
-      if((MOP == 0) && (OPTM==true))
-        {
-         MOP = DetectaCruzamentoMACD(3, 10, 15, PRICE_CLOSE);
-         if(MOP >0)
-           {
-            //Print("MOP ",MOP," MAC");
-           }
-        }
-      if(MOP == 0)
-        {
-         MOP = CROSS_MEDIAS(_Symbol, MM_media_rapida, MM_media_lenta);
-         if(MOP > 0)
-           {
-            //Print("MOP ",MOP," CRL");
-           }
-        }
-      if(MOP == 0)
-        {
-         MOP = GUESS(MM_media_rapida, MM_media_lenta);
-         if(MOP > 0)
-           {
-            //Print("MOP ",MOP," GRL");
-           }
-        }
-      if(MOP == 0)
-        {
-         MOP = CROSS_MEDIAS(_Symbol, MM_media_rapida, MM_media_media);
-         if(MOP > 0)
-           {
-            //Print("MOP ",MOP," CRM");
-           }
-        }
-      if(MOP == 0)
-        {
-         MOP = GUESS(MM_media_rapida, MM_media_media);
-         if(MOP > 0)
-           {
-            //Print("MOP ",MOP," GRM");
-           }
-        }
-      if(MOP == 0)
-        {
-         MOP = CROSS_MEDIAS(_Symbol, MM_media_media, MM_media_lenta);
-         if(MOP > 0)
-           {
-            //Print("MOP ",MOP," CML");
-           }
-        }
-      if(MOP == 0)
-        {
-         MOP = GUESS(MM_media_media, MM_media_lenta);
-         if(MOP > 0)
-           {
-            //Print("MOP ",MOP," GML");
-           }
-        }
-     }
-   if((M == 2) || (M == 0))
-     {
-      if(MOP == 0)
-        {
-         MOP = PROX_DA_MEDIA(MM_media_rapida);
-        }
-      if(MOP == 0)
-        {
-         MOP = PROX_DA_MEDIA(MM_media_media);
-        }
-      if(MOP == 0)
-        {
-         MOP = PROX_DA_MEDIA(MM_media_lenta);
-        }
-     }
-   if((M == 3) || (M == 0))
-     {
-      if(MOP == 0)
-        {
-         MOP = GAIN_AG(MM_media_rapida);
-        }
-      if(MOP == 0)
-        {
-         MOP = GAIN_AG(MM_media_media);
-        }
-      if(MOP == 0)
-        {
-         MOP = GAIN_AG(MM_media_lenta);
-        }
-     }
-   if((M == 4) || (M == 0))
-     {
-      if(MOP == 0)
-        {
-         MOP = CheckBollingerSignal(Symbol(), PERIOD_CURRENT, 20, 2);
-        }
-     }
-   if((M == 5) || (M == 0))
-     {
-      if(MOP == 0)
-        {
-         MOP = CheckMACDCross(
-                  _Symbol,
-                  _Period,
-                  MM_media_rapida,    // fast EMA
-                  MM_media_lenta,    // slow EMA
-                  MM_media_media,     // signal SMA
-                  PRICE_CLOSE,
-                  2,     // shift_previous (two bars ago)
-                  1      // shift_current (one bar ago)
-               );
-        }
-     }
-   if((M == 6) || (M == 0))
-     {
-      if(MOP == 0)
-        {
-         double dist;
-         bool  ma_up, price_above;
-         MOP = GetMeanReversionSignal(55, PERIOD_CURRENT, dist, ma_up, price_above);
-        }
-     }
-   if((M == 7) || (M == 0))
-     {
-      if(MOP == 0)
-        {
-         MOP = SAME_dir();
-        }
-     }
-   if((M == 8) || (M == 0))
-     {
-      if(MOP == 0)
-        {
-         MOP = SAME_dir2();
-        }
-     }
-   return MOP;
-  }
-
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -1284,7 +1386,7 @@ VALIDoper ValidarParametros(int fator, string ativo, int periodo, int tipo_ordem
 // Selecionar o símbolo
    if(!SymbolSelect(ativo, true))
      {
-      //      Print("Erro ao selecionar o símbolo: ", ativo);
+      //      //T Print("Erro ao selecionar o símbolo: ", ativo);
       val_oper.VERIF = false;
       return val_oper;
      }
@@ -1298,19 +1400,19 @@ VALIDoper ValidarParametros(int fator, string ativo, int periodo, int tipo_ordem
    V_CURRENT_BID = SymbolInfoDouble(Symbol(),SYMBOL_BID);
    SPREAD = V_CURRENT_ASK - V_CURRENT_BID;
    double distancia_minima = SPREAD * fator;
-//   Print("DISTANCIAMINIMA S ", SPREAD, " * ", fator);
-//   Print("DISTANCIAMINIMA V ", distancia_minima);
-//   Print("G ",take_profit," ",take_profit," ",preco_entrada-take_profit," ",(preco_entrada-take_profit)/SPREAD);
-//   Print("L ",stop_loss," ",stop_loss," ",preco_entrada-stop_loss," ",(preco_entrada-stop_loss)/SPREAD);
+//   //T Print("DISTANCIAMINIMA S ", SPREAD, " * ", fator);
+//   //T Print("DISTANCIAMINIMA V ", distancia_minima);
+//   //T Print("G ",take_profit," ",take_profit," ",preco_entrada-take_profit," ",(preco_entrada-take_profit)/SPREAD);
+//   //T Print("L ",stop_loss," ",stop_loss," ",preco_entrada-stop_loss," ",(preco_entrada-stop_loss)/SPREAD);
 // Validar o lote
    if(lote < lote_minimo)
      {
-      //      Print("Lote ajustado para o valor mínimo permitido.");
+      //      //T Print("Lote ajustado para o valor mínimo permitido.");
       lote = lote_minimo;
      }
    if(lote > lote_maximo)
      {
-      //      Print("Lote ajustado para o valor máximo permitido.");
+      //      //T Print("Lote ajustado para o valor máximo permitido.");
       lote = lote_maximo;
      }
    lote = MathFloor(lote / incremento_lote) * incremento_lote;  // Ajusta para o incremento correto
@@ -1318,7 +1420,7 @@ VALIDoper ValidarParametros(int fator, string ativo, int periodo, int tipo_ordem
    /* Validar Stop Loss e Take Profit
       if(MathAbs(preco_entrada - stop_loss) < distancia_minima)
         {
-         //      Print("Stop Loss ajustado para respeitar a distância mínima permitida.");
+         //      //T Print("Stop Loss ajustado para respeitar a distância mínima permitida.");
          if(tipo_ordem == 1)
            {
             stop_loss = preco_entrada - distancia_minima;
@@ -1331,7 +1433,7 @@ VALIDoper ValidarParametros(int fator, string ativo, int periodo, int tipo_ordem
 
       if(MathAbs(preco_entrada - take_profit) < distancia_minima)
         {
-         //      Print("Take Profit ajustado para respeitar a distância mínima permitida.");
+         //      //T Print("Take Profit ajustado para respeitar a distância mínima permitida.");
          if(tipo_ordem == 1)
            {
             take_profit = preco_entrada + distancia_minima;
@@ -1359,7 +1461,7 @@ void DesenharRetangulo(double preco_maior, double preco_menor,
    string nome_retangulo = "RTP";
    if(!ObjectCreate(0, nome_retangulo, OBJ_RECTANGLE, 0, tempo_atual, preco_maior, tempo_deslocado, preco_menor))
      {
-      //      Print("Erro ao criar o retângulo: ", GetLastError());
+      //      //T Print("Erro ao criar o retângulo: ", GetLastError());
       return;
      }
    ObjectSetInteger(0, nome_retangulo, OBJPROP_COLOR, cor);
@@ -1464,14 +1566,14 @@ int PROX_DA_MEDIA(int Periodo)
         }
      }
    /*
-      Print("X : VARmed ",VARmed);
-      Print("X : DIRmed ",DIRmed);
-      Print("X : M_ant ",M_ant);
-      Print("X : M_sup ",M_sup);
-      Print("X : M_inf ",M_inf);
-      Print("X : V_ant ",V_ant);
-      Print("X : V_new ",V_new);
-      Print("X : Cruza ",Cruza)
+      //T Print("X : VARmed ",VARmed);
+      //T Print("X : DIRmed ",DIRmed);
+      //T Print("X : M_ant ",M_ant);
+      //T Print("X : M_sup ",M_sup);
+      //T Print("X : M_inf ",M_inf);
+      //T Print("X : V_ant ",V_ant);
+      //T Print("X : V_new ",V_new);
+      //T Print("X : Cruza ",Cruza)
    */
    return (resp);
   }
@@ -1487,13 +1589,13 @@ int CRUZA_MEDIA(int MedP, int MedG)
    double MP_b[];
 
    MG_count = iMA(Symbol(), Period(), MedG, 0, MODE_EMA, PRICE_CLOSE);
-//   Print("Chart 2");
+//   //T Print("Chart 2");
    ChartIndicatorAdd(0,0,MG_count);
    CopyBuffer(MG_count,0,0,total,MG_b);
    ArraySetAsSeries(MG_b, true);
 
    MP_count = iMA(Symbol(), Period(), MedP, 0, MODE_EMA, PRICE_CLOSE);
-//   Print("Chart 3");
+//   //T Print("Chart 3");
    ChartIndicatorAdd(0,0,MP_count);
    CopyBuffer(MP_count,0,0,total,MP_b);
    ArraySetAsSeries(MP_b, true);
@@ -1524,7 +1626,7 @@ int ANGULOG(int Div, double Lim)
    int M_count;
    double MM_b[];
    M_count = iMA(Symbol(), Period(), Periodo, 0, MODE_EMA, PRICE_CLOSE);
-//   Print("Chart 4");
+//   //T Print("Chart 4");
    ChartIndicatorAdd(0,0,M_count);
    CopyBuffer(M_count,0,0,total,MM_b);
    ArraySetAsSeries(MM_b, true);
@@ -1550,7 +1652,7 @@ int GAIN_AG(int Periodo)
    int M_count;
    double MM_b[];
    M_count = iMA(Symbol(), Period(), Periodo, 0, MODE_EMA, PRICE_CLOSE);
-//   Print("Chart 5");
+//   //T Print("Chart 5");
    ChartIndicatorAdd(0,0,M_count);
    CopyBuffer(M_count,0,0,total,MM_b);
    ArraySetAsSeries(MM_b, true);
@@ -1614,18 +1716,18 @@ double Stop_range()
       TENDENCIA_c_v = 2;
      }
    /*
-      Print("Estimativa Próximo Candle: ",
+      //T Print("Estimativa Próximo Candle: ",
             " Tamanho=", DoubleToString(finalEstimate.size_estimate, 5),
             " | Direção=", finalEstimate.direction,
             " | Confiança=", DoubleToString(finalEstimate.confidence, 2));
 
       if(Dsignal == 1)
-         Print("🔼 Sinal: COMPRA");
+         //T Print("🔼 Sinal: COMPRA");
       else
          if(Dsignal == -1)
-            Print("🔽 Sinal: VENDA");
+            //T Print("🔽 Sinal: VENDA");
          else
-            Print("⚪️ Sinal: NEUTRO");
+            //T Print("⚪️ Sinal: NEUTRO");
       return (Dsignal);
    */
    return (NormalizeDouble(finalEstimate.size_estimate,2));
@@ -1706,7 +1808,7 @@ double TrendStrength(int ma_period, ENUM_MA_METHOD ma_method, ENUM_APPLIED_PRICE
    int M_count;
    double MM_b[];
    M_count = iMA(Symbol(), Period(), ma_period, 0, ma_method, applied_price);
-//   Print("Chart 6");
+//   //T Print("Chart 6");
    ChartIndicatorAdd(0,0,M_count);
    CopyBuffer(M_count,0,0,total,MM_b);
    ArraySetAsSeries(MM_b, true);
@@ -1781,7 +1883,7 @@ double CalcularAngulo(int tempo1, int tempo2)
    double angulo = MathArctan(m); // Ângulo em radianos
    angulo = angulo * 180.0 / M_PI; // Converte para graus
    /*
-      Print("Calc "
+      //T Print("Calc "
             ," D  ",D
             ," buy_price  ",buy_price
             ," sell_price ",sell_price
@@ -1839,7 +1941,7 @@ void REPLACE(int E_op, double E_lote)
    requisicao.volume       = NormalizeDouble(LotSize, 2);                  // Nº de Lotes
    requisicao.deviation    = 0;                                            // Desvio Permitido do preço
    requisicao.type_filling = filling_type;                                 // Tipo de Preenchimento da ordem
-//     Print("REPLACE "," O ", E_op, " Lote ", E_lote, " G ", Valgain, " L ", Valloss);
+//     //T Print("REPLACE "," O ", E_op, " Lote ", E_lote, " G ", Valgain, " L ", Valloss);
    VTS_str=" ";
    VTS_SDO_INI_OPER = SALDO_Corrigido();
    VTS_valop = requisicao.price;
@@ -2048,7 +2150,7 @@ void TRAILS()
                   atn = "<<<<<<<<<";
                  }
                /*
-                              Print("TRAILS "
+                              //T Print("TRAILS "
                                     ," OP ",OP
                                     ," ASK ",SymbolInfoDouble(Symbol(),SYMBOL_ASK)
                                     ," BID ",SymbolInfoDouble(Symbol(),SYMBOL_BID)
@@ -2062,7 +2164,7 @@ void TRAILS()
                */
                if((NEWslPosition != slPosition) || (NEWtpPosition != tpPosition))
                  {
-                  //   Print("NSL ",OP," ",slPosition," ",DoubleToString(NEWslPosition,2)," O ",VTS_valop," C ",CurPrice);
+                  //   //T Print("NSL ",OP," ",slPosition," ",DoubleToString(NEWslPosition,2)," O ",VTS_valop," C ",CurPrice);
                   m_trade.PositionModify(posTicket,NormalizeDouble(NEWslPosition,2),NEWtpPosition);
                   ResetLastError();
                  }
@@ -2231,7 +2333,7 @@ double PriceCU()
    /*
    datetime a = TimeCurrent();
 
-   Print(Symbol(),",",a,"\n",
+   //T Print(Symbol(),",",a,"\n",
          "ASK: ",DoubleToString(SymbolInfoDouble(Symbol(),SYMBOL_ASK)),"\n",
          "BID: ",DoubleToString(SymbolInfoDouble(Symbol(),SYMBOL_BID)),"\n",
          "LAST: ",DoubleToString(SymbolInfoDouble(Symbol(),SYMBOL_LAST))
@@ -2249,7 +2351,7 @@ int ANGULO_UM(double Lim)
    int resp = 0;
    double VARmed = TrendStrength2(Periodo, MODE_EMA, PRICE_CLOSE, TEND_qp);
    string DIRmed = TrendDirection(VARmed, Lim);
-//   Print("VRmed ", VARmed," q ", qvm++);
+//   //T Print("VRmed ", VARmed," q ", qvm++);
    if(DIRmed == "Subindo")
      {
       resp = 1;
@@ -2302,7 +2404,7 @@ void INV_oper()
      {
       INVS_Q++;
      }
-//   Print("CUR_INVER ",INVS_anter," ",INVS_atual," ",INVS_Q);
+//   //T Print("CUR_INVER ",INVS_anter," ",INVS_atual," ",INVS_Q);
    INVS_anter = INVS_atual;
    if(INVS_Q <= 5)
      {
@@ -2411,7 +2513,7 @@ int Check_Media_Tendencia_Com_Inversao(ENUM_TIMEFRAMES timeframe, int N, int Q, 
    string duracao = (MathAbs(direcao_cont) >= Q / 2) ? "longa" : "curta";
 
 // === ETAPA 3: DECISÃO FINAL === //
-//   Print("D,F,D ",direcao," ",forca," ",duracao);
+//   //T Print("D,F,D ",direcao," ",forca," ",duracao);
    if(direcao == "alta" && (forca == "media" || forca == "forte") && duracao == "longa")
       return 1; // COMPRA
    else
@@ -2508,7 +2610,7 @@ CandleEstimation CombineEstimates()
                            (estM15.direction * estM15.confidence * weightM15) +
                            (estH2.direction * estH2.confidence * weightH2);
 
-//   Print("TMPSB sizeEstimate ",sizeEstimate," directionScore ",directionScore);
+//   //T Print("TMPSB sizeEstimate ",sizeEstimate," directionScore ",directionScore);
    int finalDirection = 0;
    if(directionScore > 0.1)
      {
@@ -2539,7 +2641,7 @@ void MOSTRA_SIT(string OR)
    double   Plow  = iLow(Symbol(),Period(),0);
    V_CURRENT_ASK = SymbolInfoDouble(Symbol(),SYMBOL_ASK);
    V_CURRENT_BID = SymbolInfoDouble(Symbol(),SYMBOL_BID);
-//   Print("PRECOS C : ",OR," O ",Popen," L ",Plow," H ",Phigh," A ",V_CURRENT_ASK," B ",V_CURRENT_BID);
+//   //T Print("PRECOS C : ",OR," O ",Popen," L ",Plow," H ",Phigh," A ",V_CURRENT_ASK," B ",V_CURRENT_BID);
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -2565,7 +2667,7 @@ int CROSS_MEDIAS(string symbol, int MED_P, int MED_G)
 int AchaCruzamentos(double fator, string symbol, ENUM_TIMEFRAMES timeframe,
                     int minMP, int maxMP, int minMG, int maxMG, string nome, color cor)
   {
-//Print(">>>>>>>>>>>>>>>>>>>>> CR ",minMP," ",minMG);
+////T Print(">>>>>>>>>>>>>>>>>>>>> CR ",minMP," ",minMG);
    double preco = iClose(symbol, timeframe, 1);
    int sinal = 0;
    int mp = 0;
@@ -2620,110 +2722,6 @@ double CALC_media_B(string symbol, ENUM_TIMEFRAMES timeframe, int MEDIA, int DES
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-int SAME_dir()
-  {
-   int OPO=0;
-   V_CURRENT_ASK = SymbolInfoDouble(Symbol(),SYMBOL_ASK);
-   V_CURRENT_BID = SymbolInfoDouble(Symbol(),SYMBOL_BID);
-   SPREAD = V_CURRENT_ASK - V_CURRENT_BID;
-   int DMP = VerificarDirecaoEMA(MM_media_rapida, Max_dist);
-   int DMM = VerificarDirecaoEMA(MM_media_media, Max_dist);
-   int DMG = VerificarDirecaoEMA(MM_media_lenta, Max_dist);
-   int PDR = CheckPriceDirection();
-   Print("MET 7 "," DMP ",DMP," DMM ",DMM," DMG ",DMG," PDR ",PDR);
-   if((DMP == DMM) && (DMM == DMG) && (DMM == PDR))
-     {
-      OPO = DMP;
-     }
-   return OPO;
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-int SAME_dir2()
-  {
-   int OPO=0;
-   V_CURRENT_ASK = SymbolInfoDouble(Symbol(),SYMBOL_ASK);
-   V_CURRENT_BID = SymbolInfoDouble(Symbol(),SYMBOL_BID);
-   SPREAD = V_CURRENT_ASK - V_CURRENT_BID;
-   int DMP = VerificarDirecaoEMA(MM_media_rapida, Max_dist);
-   int DMM = VerificarDirecaoEMA(MM_media_media, Max_dist);
-   int DMG = VerificarDirecaoEMA(MM_media_lenta, Max_dist);
-   int PDR = CheckPriceDirection();
-   Print("MET 8 "," DMP ",DMP," DMM ",DMM," DMG ",DMG," PDR ",PDR);
-   if(DMP == DMM)
-     {
-      OPO = DMP;
-     }
-   if(DMP == DMG)
-     {
-      OPO = DMP;
-     }
-   if(DMM == DMG)
-     {
-      OPO = DMM;
-     }
-   if(OPO != PDR)
-     {
-      OPO =0;
-     }
-   return OPO;
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-int CheckPriceDirection()
-  {
-   double PF = iClose(Symbol(), Period(), 1);
-   if(PF <= 0)
-     {
-      return(0);
-     }
-   double bid_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double ask_price = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   if(bid_price > PF && ask_price > PF)
-     {
-      return(1);
-     }
-   if(bid_price < PF && ask_price < PF)
-     {
-      return(2);
-     }
-   return(0);
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-double AMedia(int N, int Q = 0, ENUM_MA_METHOD metodo = MODE_EMA)
-  {
-   static int    ultimo_N      = -1;
-   static int    ultimo_metodo = -1;
-   static int    handle        = INVALID_HANDLE;
-   if(handle == INVALID_HANDLE || ultimo_N != N || ultimo_metodo != metodo)
-     {
-      if(handle != INVALID_HANDLE)
-         IndicatorRelease(handle);
-      handle = iMA(_Symbol, _Period, N, 0, metodo, PRICE_CLOSE);
-      ultimo_N      = N;
-      ultimo_metodo   = metodo;
-
-      if(handle == INVALID_HANDLE)
-        {
-         Print(__FUNCTION__, " → Erro ao criar handle da média ", N, " ", EnumToString(metodo));
-         return EMPTY_VALUE;
-        }
-     }
-   double valor[1];
-   if(CopyBuffer(handle, 0, Q, 1, valor) < 1)
-     {
-      Print(__FUNCTION__, " → Falha no CopyBuffer (shift=", Q, ")");
-      return EMPTY_VALUE;
-     }
-   return valor[0];
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
 void MOSTRA()
   {
 //B
@@ -2770,13 +2768,13 @@ void DesenharMedia(
 // Obtem os tempos e os valores da média do outro timeframe
    if(!CopyBuffer(iMA(symbol, timeframe_ma, ma_period, ma_shift, ma_method, ma_price), 0, 0, bars, valores_ma))
      {
-      //      Print("Erro ao copiar buffer da média móvel de outro timeframe");
+      //      //T Print("Erro ao copiar buffer da média móvel de outro timeframe");
       return;
      }
 
    if(!CopyTime(symbol, timeframe_ma, 0, bars, tempos))
      {
-      //      Print("Erro ao copiar tempo do outro timeframe");
+      //      //T Print("Erro ao copiar tempo do outro timeframe");
       return;
      }
 
@@ -2792,7 +2790,7 @@ void DesenharMedia(
       for(int i=0; i<bars-1; i++)
         {
          string nome = nome_obj + "_" + IntegerToString(i);
-         //         Print ("Fator: ", fator);
+         //         //T Print ("Fator: ", fator);
          ObjectCreate(0, nome, OBJ_TREND, 0, tempos[i], (valores_ma[i] * fator), tempos[i+1], (valores_ma[i+1] * fator));
          ObjectSetInteger(0, nome, OBJPROP_COLOR, cor);
          ObjectSetInteger(0, nome, OBJPROP_WIDTH, LARG);
@@ -2819,7 +2817,7 @@ void Mostra_outra_TENDENCIA(string symbol, double FATP, ENUM_TIMEFRAMES Outro_TF
    int handleMA = iMA(symbol, Outro_TF, periodo, 0, metodo, preco_aplicado);
    if(handleMA == INVALID_HANDLE)
      {
-      //      Print("Erro ao criar handle da MA.");
+      //      //T Print("Erro ao criar handle da MA.");
       return;
      }
 
@@ -2831,7 +2829,7 @@ void Mostra_outra_TENDENCIA(string symbol, double FATP, ENUM_TIMEFRAMES Outro_TF
    int copied = CopyBuffer(handleMA, 0, 0, htBarsAvailable, TEND_MED_b);
    if(copied <= 0)
      {
-      //      Print("CopyBuffer falhou.");
+      //      //T Print("CopyBuffer falhou.");
       IndicatorRelease(handleMA);
       return;
      }
@@ -2874,7 +2872,7 @@ void Mostra_outra_TENDENCIA(string symbol, double FATP, ENUM_TIMEFRAMES Outro_TF
 
 
             if(!ObjectCreate(0, name, OBJ_TREND, 0, t1, p1, t2, p2))
-               Print("Falha em criar objeto: ", name);
+               //T Print("Falha em criar objeto: ", name);
             else
             {
                ObjectSetInteger(0, name, OBJPROP_COLOR, corLinha);
@@ -2915,7 +2913,7 @@ double DIRECTION(string symbol, ENUM_TIMEFRAMES Outro_TF, double FATP, int QTD_e
    double DIR = 0;
    if(QTD_MD < 2 || QTD_MD > QTD_elem)
      {
-      //      Print("Parâmetro QTD_MD inválido. Deve ser entre 2 e QTD_elem.");
+      //      //T Print("Parâmetro QTD_MD inválido. Deve ser entre 2 e QTD_elem.");
       return 0;
      }
 
@@ -2952,9 +2950,9 @@ double DIRECTION(string symbol, ENUM_TIMEFRAMES Outro_TF, double FATP, int QTD_e
    datetime tempoFinal   = iTime(symbol, Outro_TF, 0);
    double valorInicial   = TEND_MED_b[QTD_MD - 1]*FATP;
    double valorFinal     = TEND_MED_b[0]*FATP;
-//   Print("LTD"," ", 0," ", tempoInicial," ", valorInicial," ", tempoFinal," ", valorFinal," ", clrMoccasin," ",3);
+//   //T Print("LTD"," ", 0," ", tempoInicial," ", valorInicial," ", tempoFinal," ", valorFinal," ", clrMoccasin," ",3);
    DesenharReta("LTD", 0, tempoInicial, valorInicial, tempoFinal, valorFinal, clrMoccasin,5);
-//   Print("Intensidade da Tendência: ", intensidade, " ",direcao);
+//   //T Print("Intensidade da Tendência: ", intensidade, " ",direcao);
    DIR = intensidade;
    return DIR;
   }
@@ -2971,21 +2969,21 @@ double CalculateStopValue(string symbol, double lot, int points)
 // Obtém o tamanho do tick (menor variação de preço)
    if(!SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE, tick_size))
      {
-      //      Print("Erro ao obter SYMBOL_TRADE_TICK_SIZE para ", symbol);
+      //      //T Print("Erro ao obter SYMBOL_TRADE_TICK_SIZE para ", symbol);
       return(0.0);
      }
 
 // Obtém o valor do tick em moeda de depósito
    if(!SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE, tick_value))
      {
-      //      Print("Erro ao obter SYMBOL_TRADE_TICK_VALUE para ", symbol);
+      //      //T Print("Erro ao obter SYMBOL_TRADE_TICK_VALUE para ", symbol);
       return(0.0);
      }
 
 // Obtém o tamanho do contrato (número de unidades no lote 1.0)
    if(!SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE, contract_size))
      {
-      //      Print("Erro ao obter SYMBOL_TRADE_CONTRACT_SIZE para ", symbol);
+      //      //T Print("Erro ao obter SYMBOL_TRADE_CONTRACT_SIZE para ", symbol);
       return(0.0);
      }
 
@@ -3134,17 +3132,17 @@ CrossProjectionResult ProjectMACross(const string symbol,
 //+------------------------------------------------------------------+
 int GUESS(int MED_P, int MED_G)
   {
-//Print(">>>>>>>>>>>>>>>>>>>>> GS ",MED_P," ",MED_G);
+////T Print(">>>>>>>>>>>>>>>>>>>>> GS ",MED_P," ",MED_G);
    int Gr = 0;
    CrossProjectionResult r = ProjectMACross(_Symbol, tempoG,
                              MED_P, MED_G, MODE_EMA, PRICE_CLOSE,
                              Max_dist, 1e-8, 1000);
-//   Print("GUESS 1 ",r.tradeSignal," em ",r.barsToCross);
+//   //T Print("GUESS 1 ",r.tradeSignal," em ",r.barsToCross);
    if(r.barsToCross == 0)
      {
       r.tradeSignal = 0;
      }
-//   Print("GUESS 2 ",r.tradeSignal," em ",r.barsToCross);
+//   //T Print("GUESS 2 ",r.tradeSignal," em ",r.barsToCross);
    if(r.willCross)
      {
       if(r.barsToCross > 0)
@@ -3175,14 +3173,14 @@ int DetectarTendenciaLWMA(string ativo, ENUM_TIMEFRAMES timeframe, int periodo)
 // Tenta selecionar o símbolo
    if(!SymbolSelect(ativo, true))
      {
-      //Print("Erro: ativo não disponível – ", ativo);
+      ////T Print("Erro: ativo não disponível – ", ativo);
       return 0;
      }
 
    int handle = iMA(ativo, timeframe, periodo, 0, MODE_LWMA, PRICE_CLOSE);
    if(handle == INVALID_HANDLE)
      {
-      //Print("Erro: falha ao criar handle da LWMA para ", ativo);
+      ////T Print("Erro: falha ao criar handle da LWMA para ", ativo);
       return 0;
      }
 
@@ -3306,7 +3304,7 @@ int DetectaCruzamentoMACD(int fastEMA = 12, int slowEMA = 26, int signalSMA = 9,
 
 
 
-   Print("MACD 2");
+   //T Print("MACD 2");
 
 
 
@@ -3316,7 +3314,7 @@ int DetectaCruzamentoMACD(int fastEMA = 12, int slowEMA = 26, int signalSMA = 9,
    int handleMACD = iMACD(_Symbol, _Period, fastEMA, slowEMA, signalSMA, appliedPrice);
    if(handleMACD == INVALID_HANDLE)
      {
-      //Print("Erro ao criar o handle do MACD");
+      ////T Print("Erro ao criar o handle do MACD");
       return -1;
      }
 
@@ -3327,7 +3325,7 @@ int DetectaCruzamentoMACD(int fastEMA = 12, int slowEMA = 26, int signalSMA = 9,
 // Copiar os valores do MACD e da linha de sinal para os arrays
    if(CopyBuffer(handleMACD, 0, 0, 3, macdBuffer) <= 0 || CopyBuffer(handleMACD, 1, 0, 3, signalBuffer) <= 0)
      {
-      //Print("Erro ao copiar os dados do MACD");
+      ////T Print("Erro ao copiar os dados do MACD");
       return -1;
      }
 
@@ -3418,7 +3416,7 @@ void CALCULA_Lote(int operation, double risco_aceitavel_loss_usd, double lote_ma
      }
    if((highest != hh) || (lowest != ll))
      {
-      //      Print("MUDOU ",highest," != ", hh," ",lowest," != ", ll);
+      //      //T Print("MUDOU ",highest," != ", hh," ",lowest," != ", ll);
      }
    CL_operation = operation;
    CL_lote = NormalizeDouble(out_lote,2);
@@ -3426,7 +3424,7 @@ void CALCULA_Lote(int operation, double risco_aceitavel_loss_usd, double lote_ma
    CL_valor_loss = NormalizeDouble(loss_price,2);
    CL_valor_gain = NormalizeDouble(gain_price,2);
    /*
-      Print("CALC_L "
+      //T Print("CALC_L "
             ," oper ", CL_operation
             ," lotec ", q_lote
             ," lote ", CL_lote
@@ -3456,14 +3454,14 @@ double CalcLotByRisk_Adjusted(string symbol, double entry_price, double stop_pri
    */
    if(tick_value <= 0.0 || tick_size <= 0.0)
      {
-      //Print("CalcLot_Adjusted: tick_value or tick_size invalido ou zero");
+      ////T Print("CalcLot_Adjusted: tick_value or tick_size invalido ou zero");
       return(0.0);
      }
 
    double distance = MathAbs(entry_price - stop_price);
    if(distance <= 0.0)
      {
-      //Print("CalcLot_Adjusted: distancia de stop invalida (0 ou negativa)");
+      ////T Print("CalcLot_Adjusted: distancia de stop invalida (0 ou negativa)");
       return(0.0);
      }
 
@@ -3552,12 +3550,12 @@ void High_Low()
    double medHL = MathAbs((highest_high - lowest_low) * 2);
    if(highest_high <= V_CURRENT_ASK)
      {
-      //      Print("HL H ",(highest_high + medHL)," ",highest_high," A ",V_CURRENT_ASK," B ",V_CURRENT_BID);
+      //T Print("HL H ",(highest_high + medHL)," ",highest_high," A ",V_CURRENT_ASK," B ",V_CURRENT_BID);
       highest_high = highest_high + medHL;
      }
    if(lowest_low >= V_CURRENT_BID)
      {
-      //      Print("HL L ",(lowest_low - medHL)," ",lowest_low," A ",V_CURRENT_ASK," B ",V_CURRENT_BID);
+      //T Print("HL L ",(lowest_low - medHL)," ",lowest_low," A ",V_CURRENT_ASK," B ",V_CURRENT_BID);
       lowest_low = lowest_low - medHL;
      }
    if(addSPREAD == true)
@@ -3593,7 +3591,7 @@ int CheckBollingerSignal(string symbol, ENUM_TIMEFRAMES timeframe, int period, d
       CopyBuffer(boll_handle, 1, 0, 2, middle) < 0 ||
       CopyBuffer(boll_handle, 2, 0, 2, lower) < 0)
      {
-      Print("Erro ao copiar buffer das bandas");
+      //T Print("Erro ao copiar buffer das bandas");
       return 0;
      }
 
@@ -3623,20 +3621,6 @@ int CheckBollingerSignal(string symbol, ENUM_TIMEFRAMES timeframe, int period, d
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-void PROPORCIONAL()
-  {
-   double SDO_AT = SALDO_Corrigido();
-   SL_SIZE = NormalizeDouble(PrSdo(F_SL_SIZE),2);
-   MAX_LOTE = NormalizeDouble(PrSdo(F_MAX_LOTE),2);
-//   MAX_LOTE = NormalizeDouble((SDO_AT/FS_lote),2);
-   DIA_MAX_USD_GAIN = NormalizeDouble((SDO_AT * F_DIA_MAX_USD_GAIN / 100),2);
-   DIA_MAX_USD_LOSS = NormalizeDouble((SDO_AT * F_DIA_MAX_USD_LOSS / 100),2);
-   CUR_MAX_USD_GAIN = NormalizeDouble((SDO_AT * F_CUR_MAX_USD_GAIN / 100),2);
-   CUR_MAX_USD_LOSS = NormalizeDouble((SDO_AT * F_CUR_MAX_USD_LOSS / 100),2);
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
 double PrSdo(double valor)
   {
    double aav = valor;
@@ -3650,7 +3634,7 @@ double PrSdo(double valor)
       valor = valor * (SALDO_Corrigido() / STR_SDO_INI_ROBO);
      }
 
-//   Print(" PRSdo : ",dias," q : ",qpr," Ve : ",aav," Vs : ",valor," Cur : ",SALDO_Corrigido(),
+//   //T Print(" PRSdo : ",dias," q : ",qpr," Ve : ",aav," Vs : ",valor," Cur : ",SALDO_Corrigido(),
 //   " Ini :", STR_SDO_INI_ROBO," Sav: ",STR_SDO_SALVO," TOT: ",AccountInfoDouble(ACCOUNT_EQUITY));
 
    return valor;
@@ -3671,7 +3655,7 @@ int CheckMACDCross(
   {
 
 
-   Print("MACD 1");
+   //T Print("MACD 1");
 
 
 // Validate parameters
@@ -3751,14 +3735,14 @@ bool ATRMaiorOuIgual(double limiteATR, int periodoATR = 14)
    int handleATR = iATR(_Symbol, _Period, periodoATR);
    if(handleATR == INVALID_HANDLE)
      {
-      Print("Erro ao criar handle do ATR: ", GetLastError());
+      //T Print("Erro ao criar handle do ATR: ", GetLastError());
       return false;
      }
    double atrBuffer[];
    ArraySetAsSeries(atrBuffer, true);
    if(CopyBuffer(handleATR, 0, 0, 1, atrBuffer) <= 0)
      {
-      Print("Erro ao copiar buffer do ATR: ", GetLastError());
+      //T Print("Erro ao copiar buffer do ATR: ", GetLastError());
       IndicatorRelease(handleATR);
       return false;
      }
@@ -3793,7 +3777,7 @@ string LATERALIZADO()
      {
       LA = "A"; //MERCADO AGITADO / TENDÊNCIA"
      }
-//   Print("ATR atual: ", DoubleToString(atr_atual,_Digits)," ",
+//   //T Print("ATR atual: ", DoubleToString(atr_atual,_Digits)," ",
 //         "Média: ", DoubleToString(atr_media,_Digits)," Later: ",LA);
    return LA;
   }

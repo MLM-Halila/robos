@@ -28,37 +28,36 @@ string GroupChatId="-564508963";
 sinput string   Robo = "RTM08";
 sinput string Versão ="M08 2";                  //
 
-//input
+input
  int METOD_1                 = 3;           //Metodo
-//input
+input
  int METOD_2                 = 1;           //Metodo
-//input
+input
  int MM_media_lenta = 29; //Media gatilho, lenta
-//input
+input
  int MM_media_media = 7; //Media gatilho, intermediaria
-//input
+input
  int MM_media_rapida = 3; //Media gatilho, rapida
-//input
+input
  int Max_dist = 8; //Distancia max para previsão de cruzamento
-//input
+input
  bool inverso             = false;       // Inverter as operações
-//input
+input
  int dias = 10; //Renova saldo
-//input
+input
  int LimLAT = 85; //Limite indicador lateralização
-//input
+input
  int XPROP = 0; //Proporcional ao saldo 0, 1, 2
-//input
+input
  double F_SL_SIZE    =  35;    //%  Tamanho maximo do LOSS (USD)
-//input
+input
  double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
-//input
+input
  double F_DIA_MAX_USD_LOSS = 0;  //%  Max USD DIA LOSS (Fecha dia)
-//input
+input
  double F_CUR_MAX_USD_GAIN = 0;  //%  OP Max USD SALDO GAIN
-//input
+input
  double F_CUR_MAX_USD_LOSS = 0;  //%  OP Max USD SALDO LOSS
-
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
