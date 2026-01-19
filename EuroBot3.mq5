@@ -22,16 +22,16 @@ CTrade          m_trade;
 int SendMessage(string const token, string chatId,string text);
 #import
 
-
+// 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot3";
-sinput string Versao ="2.28";                  //
+sinput string Versao ="2.M30";                  //
 input group " "
 input group "PARAMETROS"
-input double          INISALDO            = 50;   // Saldo Base
+input double          INISALDO            = 40;   // Saldo Base
 input int             Pontos_Reabre_OP_em_loss      = 30;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 50;     // Pontos para fechar todas as posições
 input int             Max_oper            = 7;     // Máximo de operações simultâneas
-input double          LOTE               = 0.03;   // Lote base (inicial)
+input double          LOTE               = 0.01;   // Lote base (inicial)
 input group " "
 input group "HORARIOS PARA OPERACAO "
 input group "POR DIA DA SEMANA "
@@ -64,13 +64,13 @@ input group "PROVISORIOS"
 //input
 bool            TSP                 = true;   // Usa SPREAD nos cálculos de pontos
 input
-double FATOR                      = 2;   // Fator prox oper
+double FATOR                      = 3;   // Fator prox oper
 input
-double             Fator_Reabre_OP_em_Gain      = 0.3;     // Pontos para reentrada gain
+double             Fator_Reabre_OP_em_Gain      = 0.9;     // Pontos para reentrada gain
 input
 double             width      = 0;     // Largura linha Bollinger (pontos)
 input
-int             Notick      = 240;     // Tempo para rever ops no tick (Segs)
+int             Notick      = 60;     // Tempo para rever ops no tick (Segs)
 double             Perda_Maxima      = 0;     // Perda maxima para expertremove
 //input
 int SEQ_CANDLES=0;
@@ -99,6 +99,7 @@ int O_magic_number;
 double SPREAD;
 int C_V;
 ENUM_ORDER_TYPE_FILLING filling_type = ORDER_FILLING_IOC;
+double SALDO_DISP = 0;
 double          PropLote            = 0.05;   // Percentual do lote em relação ao saldo
 string WHY;
 //teste
@@ -109,6 +110,8 @@ int M2 = 0;
 int F1 = 0;
 int F2 = 0;
 double MAIORSDO = 0;
+double maiorjerk = 0;
+double menorjerk = 0;
 //+------------------------------------------------------------------+
 //| Função de inicialização                                          |
 //+------------------------------------------------------------------+
@@ -118,10 +121,15 @@ int OnInit()
    SALDO_Inicial = 0;
    SALDO_Anterior = 0;
    SALDOINI = INISALDO;
+   SALDO_DISP = 0;
    SALDO_Rev();
    TelMsg();
    double s = SALDO_Corrigido();
-//   Print ("X saldo init ",s);
+   if(SALDOINI == 0)
+     {
+      SALDOINI = s;
+     }
+   Print("X saldo init ",SALDOINI);
    PropLote = LOTE * 100 / s;
    double CCCC = NormalizeDouble(LOTE,2);
    CLote = LOTE_Prop();
@@ -161,31 +169,68 @@ void OnTick()
      {
       TelMsg();
      }
-   if(Notick > 0)
+      if(CountSeconds(30, 3) == true)
+        {
+         SALDO_DISP = SALDO_Corrigido();
+         if(SALDO_DISP < -INISALDO)
+           {
+            Close_all_Orders(1);
+            Close_all_Orders(2);
+            ExpertRemove();
+           }
+        }
+  if(Notick > 0)
      {
       if(CountSeconds(Notick, 2) == true)
         {
          Processa();
-         /*       double seg = SALDO_Corrigido();
-                  if(Orders_by_OP(1) > 0)
-                    {
-                     OPs_Negativas(1);
-                     OPs_Positivas(1);
-                    }
-                  if(Orders_by_OP(2) > 0)
-                    {
-                     OPs_Negativas(2);
-                     OPs_Positivas(2);
-                    }
-         */
         }
      }
+   int tempo_prov = 60;
+   if(CountSeconds(tempo_prov, 5) == true)
+     {
+      double  J_THRESHOLD = 15;
+      double jerk = CalcularVariacaoAceleracao(SALDO_Corrigido(), tempo_prov);
+      if(maiorjerk == 0)
+        {
+         maiorjerk = jerk;
+        }
+      if(menorjerk == 0)
+        {
+         menorjerk = jerk;
+        }
+      if(maiorjerk < jerk)
+        {
+         maiorjerk = jerk;
+        }
+      if(menorjerk > jerk)
+        {
+         menorjerk = jerk;
+        }
+      string MSJ = " ";
+      if(jerk > J_THRESHOLD)
+        {
+         MSJ = "+++++++++++++++++++++";
+        }
+      if(jerk < -J_THRESHOLD)
+        {
+         MSJ = "---------------------";
+        }
+      //      Print("X JERK ",SALDO_Corrigido()," ",jerk," ",menorjerk," ",maiorjerk," ",MSJ);
+     }
+
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
    bool NewCandle = TemosNewCandle();
    if(NewCandle)
      {
+      if(SALDO_DISP < -INISALDO)
+        {
+         Close_all_Orders(1);
+         Close_all_Orders(2);
+         ExpertRemove();
+        }
       SEQ_CANDLES++;
       Processa();
      }
@@ -897,5 +942,48 @@ double LOTE_Prop()
    return CCCC;
   }
 //+------------------------------------------------------------------+
+//| Função para calcular a variação da aceleração do saldo           |
+//+------------------------------------------------------------------+
+double CalcularVariacaoAceleracao(double saldo_atual, double tempo_decorrido)
+  {
+// Variáveis estáticas para manter o estado entre chamadas
+   static double saldo_anterior = 0.0;
+   static double velocidade_anterior = 0.0;
+   static double aceleracao_anterior = 0.0;
+   static bool inicializado = false;
 
+// Se não inicializado, define os valores iniciais e retorna 0
+   if(!inicializado)
+     {
+      saldo_anterior = saldo_atual;
+      inicializado = true;
+      return 0.0;
+     }
+
+// Evita divisão por zero se tempo_decorrido for zero
+   if(tempo_decorrido <= 0.0)
+     {
+      return 0.0;
+     }
+
+// Calcula velocidade atual (variação do saldo por tempo)
+//   double delta_saldo = saldo_atual - saldo_anterior;
+   double delta_saldo = saldo_atual * 100 / saldo_anterior;
+   double velocidade_atual = delta_saldo / (tempo_decorrido/60);
+
+// Calcula aceleração atual (variação da velocidade por tempo)
+   double delta_velocidade = velocidade_atual - velocidade_anterior;
+   double aceleracao_atual = delta_velocidade / (tempo_decorrido/60);
+
+// Calcula variação da aceleração (jerk)
+   double delta_aceleracao = aceleracao_atual - aceleracao_anterior;
+   double variacao_aceleracao = delta_aceleracao / tempo_decorrido;
+
+// Atualiza os valores para a próxima chamada
+   saldo_anterior = saldo_atual;
+   velocidade_anterior = velocidade_atual;
+   aceleracao_anterior = aceleracao_atual;
+
+   return NormalizeDouble((variacao_aceleracao),4);
+  }
 //+------------------------------------------------------------------+
