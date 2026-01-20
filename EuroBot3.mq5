@@ -24,10 +24,10 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot3";
-sinput string Versao ="2.M30";                  //
+sinput string Versao ="3";                  //
 input group " "
 input group "PARAMETROS"
-input double          INISALDO            = 40;   // Saldo Base
+input double          INISALDO            = 150;   // Saldo Base
 input int             Pontos_Reabre_OP_em_loss      = 30;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 50;     // Pontos para fechar todas as posições
 input int             Max_oper            = 7;     // Máximo de operações simultâneas
@@ -71,8 +71,15 @@ input
 double             width      = 0;     // Largura linha Bollinger (pontos)
 input
 int             Notick      = 60;     // Tempo para rever ops no tick (Segs)
+input
+double  Sdo_THRESHOLD = 15; // Max jerk saldo
+input bool USA_M_menor = true; //Confirma com media timeframe menor
+input bool USA_M_maior = false; //Confirma com media timeframe menor
+input int Mquant = 5; //Quant medias
+int SegundosAtual;
 double             Perda_Maxima      = 0;     // Perda maxima para expertremove
-//input
+int tendencia_lower = 0;
+int tendencia_upper = 0;
 int SEQ_CANDLES=0;
 int SEQ_CANDLES_COM_OP=0;
 struct SDaySchedule
@@ -85,6 +92,7 @@ datetime INItempo[10];
 double SALDO_Inicial = 0;
 double SALDO_Anterior = 0;
 double SALDOINI = 0;
+double SALDO_1 = 0;
 double INVERSO_SALDOINI = 0;
 double CLote = 0;
 int NWOP = 0;
@@ -124,13 +132,13 @@ int OnInit()
    SALDO_DISP = 0;
    SALDO_Rev();
    TelMsg();
-   double s = SALDO_Corrigido();
+   SALDO_1 = SALDO_Corrigido();
    if(SALDOINI == 0)
      {
-      SALDOINI = s;
+      SALDOINI = SALDO_1;
      }
    Print("X saldo init ",SALDOINI);
-   PropLote = LOTE * 100 / s;
+   PropLote = LOTE * 100 / SALDO_1;
    double CCCC = NormalizeDouble(LOTE,2);
    CLote = LOTE_Prop();
    ponto      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
@@ -152,6 +160,7 @@ int OnInit()
    schedule[6].end = InpSab_Fi;
    schedule[0].start = InpDom_In;
    schedule[0].end = InpDom_Fi;
+   SegundosAtual = PeriodSeconds();
    return(INIT_SUCCEEDED);
   }
 //+------------------------------------------------------------------+
@@ -169,54 +178,69 @@ void OnTick()
      {
       TelMsg();
      }
-      if(CountSeconds(30, 3) == true)
+   if(CountSeconds(30, 3) == true)
+     {
+      SALDO_DISP = SALDO_Corrigido();
+      if(SALDO_DISP < -INISALDO)
         {
-         SALDO_DISP = SALDO_Corrigido();
-         if(SALDO_DISP < -INISALDO)
-           {
-            Close_all_Orders(1);
-            Close_all_Orders(2);
-            ExpertRemove();
-           }
+         Close_all_Orders(1);
+         Close_all_Orders(2);
+         ExpertRemove();
         }
-  if(Notick > 0)
+     }
+   if(Notick > 0)
      {
       if(CountSeconds(Notick, 2) == true)
         {
          Processa();
         }
      }
-   int tempo_prov = 60;
+   int tempo_prov = SegundosAtual/2;
    if(CountSeconds(tempo_prov, 5) == true)
      {
-      double  J_THRESHOLD = 15;
-      double jerk = CalcularVariacaoAceleracao(SALDO_Corrigido(), tempo_prov);
-      if(maiorjerk == 0)
+      double SDO_VAR = CalcularVariacaoSALDO(SALDO_Corrigido(), tempo_prov);
+      if(SDO_VAR < -Sdo_THRESHOLD)
         {
-         maiorjerk = jerk;
+         Close_all_Orders(1);
+         Close_all_Orders(2);
+         ExpertRemove();
         }
-      if(menorjerk == 0)
-        {
-         menorjerk = jerk;
-        }
-      if(maiorjerk < jerk)
-        {
-         maiorjerk = jerk;
-        }
-      if(menorjerk > jerk)
-        {
-         menorjerk = jerk;
-        }
-      string MSJ = " ";
-      if(jerk > J_THRESHOLD)
-        {
-         MSJ = "+++++++++++++++++++++";
-        }
-      if(jerk < -J_THRESHOLD)
-        {
-         MSJ = "---------------------";
-        }
-      //      Print("X JERK ",SALDO_Corrigido()," ",jerk," ",menorjerk," ",maiorjerk," ",MSJ);
+      ENUM_TIMEFRAMES lower, upper;
+      GetAdjacentTimeframes(PERIOD_CURRENT, lower, upper);
+      tendencia_lower = EMATrend(21, lower, Mquant);
+      tendencia_upper = EMATrend(21, upper, Mquant);
+
+      /*      double jerk = CalcularVariacaoAceleracao(SALDO_Corrigido(), tempo_prov);
+            if(maiorjerk == 0)
+              {
+               maiorjerk = jerk;
+              }
+            if(menorjerk == 0)
+              {
+               menorjerk = jerk;
+              }
+            if(maiorjerk < jerk)
+              {
+               maiorjerk = jerk;
+              }
+            if(menorjerk > jerk)
+              {
+               menorjerk = jerk;
+              }
+            string MSJ = " ";
+            if(jerk > J_THRESHOLD)
+              {
+               MSJ = "+++++++++++++++++++++";
+              }
+            if(jerk < -J_THRESHOLD)
+              {
+               MSJ = "---------------------";
+               Close_all_Orders(1);
+               Close_all_Orders(2);
+               ExpertRemove();
+
+              }
+      */
      }
 
 //+------------------------------------------------------------------+
@@ -249,6 +273,20 @@ void Processa()
    CLote = LOTE_Prop();
    int OO = Orders_ON();
    NWOP = CheckBollingerSignal(Symbol(), PERIOD_CURRENT, 20, 2);
+   if(NWOP > 0)
+     {
+      Print("X LIMS ",NWOP," ",USA_M_menor," ",tendencia_lower," ",USA_M_maior," ",tendencia_upper);
+      if(USA_M_menor && (NWOP == tendencia_lower))
+        {
+         Print("X LIMS PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP");
+         NWOP = 0;
+        }
+      if(USA_M_maior && (NWOP == tendencia_upper))
+        {
+         Print("X LIMS GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG");
+         NWOP = 0;
+        }
+     }
    if(NWOP > 0)
      {
       int OO = Orders_by_OP(NWOP);
@@ -967,13 +1005,12 @@ double CalcularVariacaoAceleracao(double saldo_atual, double tempo_decorrido)
      }
 
 // Calcula velocidade atual (variação do saldo por tempo)
-//   double delta_saldo = saldo_atual - saldo_anterior;
-   double delta_saldo = saldo_atual * 100 / saldo_anterior;
-   double velocidade_atual = delta_saldo / (tempo_decorrido/60);
+   double delta_saldo = saldo_atual - saldo_anterior;
+   double velocidade_atual = delta_saldo / tempo_decorrido;
 
 // Calcula aceleração atual (variação da velocidade por tempo)
    double delta_velocidade = velocidade_atual - velocidade_anterior;
-   double aceleracao_atual = delta_velocidade / (tempo_decorrido/60);
+   double aceleracao_atual = delta_velocidade / tempo_decorrido;
 
 // Calcula variação da aceleração (jerk)
    double delta_aceleracao = aceleracao_atual - aceleracao_anterior;
@@ -983,7 +1020,146 @@ double CalcularVariacaoAceleracao(double saldo_atual, double tempo_decorrido)
    saldo_anterior = saldo_atual;
    velocidade_anterior = velocidade_atual;
    aceleracao_anterior = aceleracao_atual;
+   Print("X JERK ",tempo_decorrido," ",SALDO_Corrigido()," va ",variacao_aceleracao," da ",delta_aceleracao);
 
-   return NormalizeDouble((variacao_aceleracao),4);
+   return NormalizeDouble((variacao_aceleracao),8);
+  }
+//+------------------------------------------------------------------+
+//| Função para avaliar a tendência da EMA nos últimos N candles     |
+//+------------------------------------------------------------------+
+int EMATrend(int ema_period = 20, ENUM_TIMEFRAMES timeframe = PERIOD_CURRENT, int N = 10)
+  {
+   if(N <= 1)
+      return 0; // N inválido, retorna neutro
+
+// Cria handle para o indicador EMA
+   int handle = iMA(_Symbol, timeframe, ema_period, 0, MODE_EMA, PRICE_CLOSE);
+   if(handle == INVALID_HANDLE)
+     {
+      Print("Erro ao criar handle para iMA (EMA)");
+      return 0;
+     }
+
+// Array para armazenar os valores da EMA
+   double ema_values[];
+   ArraySetAsSeries(ema_values, true);
+
+// Copia os valores dos últimos N candles fechados (iniciando do bar 1, excluindo o atual)
+   if(CopyBuffer(handle, 0, 1, N, ema_values) != N)
+     {
+      Print("Erro ao copiar buffer da EMA");
+      IndicatorRelease(handle);
+      return 0;
+     }
+
+// Libera o handle (em um EA, faça isso no OnDeinit)
+   IndicatorRelease(handle);
+
+// Calcula a inclinação (slope) via regressão linear
+   double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_x2 = 0.0;
+   for(int i = 0; i < N; i++)
+     {
+      double x = (double)i; // x de 0 (mais antigo) a N-1 (mais recente)
+      double y = ema_values[N - 1 - i]; // Inverte para alinhar: antigo primeiro
+      sum_x += x;
+      sum_y += y;
+      sum_xy += x * y;
+      sum_x2 += x * x;
+     }
+
+   double denominator = (N * sum_x2 - sum_x * sum_x);
+   if(denominator == 0.0)
+      return 0; // Evita divisão por zero
+
+   double slope = (N * sum_xy - sum_x * sum_y) / denominator;
+
+// Threshold para ignorar ruído (ajuste conforme o símbolo e timeframe, ex: 1e-5 para forex em M30)
+   double epsilon = 1e-5;
+
+   if(MathAbs(slope) < epsilon)
+      return 0; // Neutra
+   else
+      if(slope > 0)
+         return 1; // Alta
+      else
+         return 2; // Baixa
+  }
+//+------------------------------------------------------------------+
+//| Função para obter os tempos gráficos adjacentes                  |
+//+------------------------------------------------------------------+
+void GetAdjacentTimeframes(ENUM_TIMEFRAMES current, ENUM_TIMEFRAMES &lower, ENUM_TIMEFRAMES &upper)
+  {
+// Array com os tempos gráficos padrão do MT5
+   ENUM_TIMEFRAMES tf_list[] =
+     {
+      PERIOD_M1,
+      //PERIOD_M2,
+      //PERIOD_M3,
+      //PERIOD_M4,
+      PERIOD_M5,
+      //PERIOD_M6,
+      PERIOD_M10,
+      //PERIOD_M12,
+      PERIOD_M15,
+      //PERIOD_M20,
+      PERIOD_M30,
+      PERIOD_H1,
+      PERIOD_H2,
+      //PERIOD_H3,
+      PERIOD_H4,
+      PERIOD_H6,
+      PERIOD_H8,
+      PERIOD_H12,
+      PERIOD_D1,
+      PERIOD_W1,
+      PERIOD_MN1
+     };
+   int total = ArraySize(tf_list);
+   lower = PERIOD_CURRENT; // Valor padrão caso não encontre inferior
+   upper = PERIOD_CURRENT; // Valor padrão caso não encontre superior
+
+   for(int i = 0; i < total; i++)
+     {
+      if(tf_list[i] == current)
+        {
+         // Se não for o primeiro da lista, pega o anterior
+         if(i > 0)
+            lower = tf_list[i-1];
+
+         // Se não for o último da lista, pega o próximo
+         if(i < total - 1)
+            upper = tf_list[i+1];
+
+         break;
+        }
+     }
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+double CalcularVariacaoSALDO(double saldo_atual, double tempo_decorrido)
+  {
+// Variáveis estáticas para manter o estado entre chamadas
+   static double saldo_anterior = 0.0;
+   static bool inicializado = false;
+
+// Se não inicializado, define os valores iniciais e retorna 0
+   if(!inicializado)
+     {
+      saldo_anterior = saldo_atual;
+      inicializado = true;
+      return 0.0;
+     }
+
+// Evita divisão por zero se tempo_decorrido for zero
+   if(tempo_decorrido <= 0.0)
+     {
+      return 0.0;
+     }
+   double delta_saldo = (saldo_atual * 100 / saldo_anterior)-100;
+   Print ("X SDOVAR ",delta_saldo," ",saldo_atual," ",saldo_anterior);
+   saldo_anterior = saldo_atual;
+
+   return NormalizeDouble((delta_saldo),2);
   }
 //+------------------------------------------------------------------+
