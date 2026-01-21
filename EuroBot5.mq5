@@ -23,11 +23,11 @@ int SendMessage(string const token, string chatId,string text);
 #import
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
-sinput string   Robo = "EuroBot3";
+sinput string   Robo = "EuroBot5";
 sinput string Versao ="4";                  //
 input group " "
 input group "PARAMETROS"
-input double          INISALDO            = 100;   // Saldo Base
+input double          INISALDO            = 1000;   // Saldo Base
 input int             Pontos_Reabre_OP_em_loss      = 30;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 50;     // Pontos para fechar todas as posições
 input int             Max_oper            = 9;     // Máximo de operações simultâneas
@@ -74,10 +74,12 @@ int             Notick      = 60;     // Tempo para rever ops no tick (Segs)
 input
 double  Sdo_THRESHOLD = 10;// Max QUEDA SALDO
 input bool USA_M_menor = false; //Confirma com media timeframe menor
-input bool USA_M_maior = false; //Confirma com media timeframe menor
+input bool USA_M_maior = true; //Confirma com media timeframe menor
 input int Mquant = 5; //Quant medias
 input
 bool inverso             = false;       // Inverter as operações
+input
+int testa             = 0;       // TESTA
 int SegundosAtual;
 double             Perda_Maxima      = 0;     // Perda maxima para expertremove
 int tendencia_lower = 0;
@@ -114,7 +116,7 @@ double          PropLote            = 0.05;   // Percentual do lote em relação
 string WHY;
 bool INV_oper             = false;       // Inverter as operações
 bool ABRIUop = false;
-//teste
+//testa
 int O1 = 0;
 int O2 = 0;
 int M1 = 0;
@@ -200,20 +202,28 @@ void OnTick()
       if((SDO_VAR < -Sdo_THRESHOLD) && (ABRIUop == true))
         {
          ABRIUop = false;
-         Close_all_losing_operations();
+         Close_all_losing_operations(0);
          INV_oper = !INV_oper;
-         Print("X INV_oper ",INV_oper);
+         Print("X INV_oper ",INV_oper," IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII");
         }
-     }
-   ENUM_TIMEFRAMES lower, upper;
-   GetAdjacentTimeframes(PERIOD_CURRENT, lower, upper);
-   if(USA_M_menor)
-     {
-      tendencia_lower = EMATrend(21, lower, Mquant);
-     }
-   if(USA_M_maior)
-     {
-      tendencia_upper = EMATrend(21, upper, Mquant);
+      ENUM_TIMEFRAMES lower, upper;
+      GetAdjacentTimeframes(PERIOD_CURRENT, lower, upper);
+      if(USA_M_menor)
+        {
+         tendencia_lower = EMATrend(21, lower, Mquant);
+         if(testa == 2)
+           {
+            Close_all_losing_operations(tendencia_lower);
+           }
+        }
+      if(USA_M_maior)
+        {
+         tendencia_upper = EMATrend(21, upper, Mquant);
+         if(testa == 2)
+           {
+            Close_all_losing_operations(tendencia_upper);
+           }
+        }
      }
    if(Notick > 0)
      {
@@ -243,6 +253,73 @@ void OnTick()
 //|                                                                  |
 //+------------------------------------------------------------------+
 void Processa()
+  {
+   bool dls = ObjectDelete(0, "L1");
+   ponto      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   tick_size  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   tick_value = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   valor_do_ponto = tick_value * (ponto / tick_size);
+   double s = SALDO_Corrigido();
+   CLote = LOTE_Prop();
+   int OO = Orders_ON();
+   if(OO > 0)
+     {
+      OPs_Negativas(1);
+      OPs_Negativas(2);
+      OPs_Positivas(1);
+      OPs_Positivas(2);
+     }
+   NWOP = CheckBollingerSignal(Symbol(), PERIOD_CURRENT, 20, 2);
+   if((INV_oper == true) && (NWOP > 0))
+     {
+      NWOP++;
+      if(NWOP == 3)
+        {
+         NWOP = 1;
+        }
+     }
+   if(testa == 1)
+     {
+      if(NWOP > 0)
+        {
+         Print("X SIT NWOP ", NWOP, "  TEND.U ",tendencia_upper," I.ORIG ",inverso," I.CUR ",INV_oper);
+         if(NWOP != tendencia_upper)
+           {
+            INV_oper = !INV_oper;
+            Print("X SIT mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"," I.CUR ",INV_oper);
+            NWOP++;
+            if(NWOP == 3)
+              {
+               NWOP = 1;
+              }
+           }
+        }
+     }
+   if(NWOP > 0)
+     {
+      int OO = Orders_by_OP(NWOP);
+      if(OO <= Max_oper)
+        {
+         if(NWOP == 1)
+           {
+            D_linVER("L1", SymbolInfoDouble(Symbol(),SYMBOL_ASK), TimeCurrent(),clrLime, 2);
+            O1++;
+           }
+         if(NWOP == 2)
+           {
+            D_linVER("L1", SymbolInfoDouble(Symbol(),SYMBOL_ASK), TimeCurrent(),clrRed, 2);
+            O2++;
+           }
+         WHY = "NOVA";
+         ABRIUop = true;
+         ORDER(NWOP, CLote);
+        }
+     }
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OLDProcessa()
   {
    bool dls = ObjectDelete(0, "L1");
    ponto      = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
@@ -1155,7 +1232,7 @@ double CalcularVariacaoSALDO(double saldo_atual, double tempo_decorrido)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-void Close_all_losing_operations()
+void Close_all_losing_operations(int Osl)
   {
    for(int i = PositionsTotal() - 1; i >= 0; i--)
      {
@@ -1178,7 +1255,7 @@ void Close_all_losing_operations()
                   OP = 2;
                   CURR = CURR * -1;
                  }
-               if(CURR < 0)
+               if((CURR < 0) && (Osl != OP))
                  {
                   if(!m_trade.PositionClose(posTicket))
                     {
