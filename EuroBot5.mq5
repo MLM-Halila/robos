@@ -24,10 +24,10 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot5";
-sinput string Versao ="4";                  //
+sinput string Versao ="5";                  //
 input group " "
 input group "PARAMETROS"
-input double          INISALDO            = 1000;   // Saldo Base
+input double          INISALDO            = 000;   // Saldo Base
 input int             Pontos_Reabre_OP_em_loss      = 30;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 50;     // Pontos para fechar todas as posições
 input int             Max_oper            = 9;     // Máximo de operações simultâneas
@@ -72,12 +72,12 @@ double             width      = 0;     // Largura linha Bollinger (pontos)
 input
 int             Notick      = 60;     // Tempo para rever ops no tick (Segs)
 input
-double  Sdo_THRESHOLD = 10;// Max QUEDA SALDO
+double  Sdo_THRESHOLD = 30;// Max QUEDA SALDO
 input bool USA_M_menor = false; //Confirma com media timeframe menor
 input bool USA_M_maior = true; //Confirma com media timeframe menor
-input int Mquant = 5; //Quant medias
+input int Mquant = 50; //Quant medias
 input
-bool inverso             = false;       // Inverter as operações
+bool inverso             = true;       // Inverter as operações
 input
 int testa             = 0;       // TESTA
 int SegundosAtual;
@@ -282,19 +282,23 @@ void Processa()
      {
       if(NWOP > 0)
         {
-         Print("X SIT NWOP ", NWOP, "  TEND.U ",tendencia_upper," I.ORIG ",inverso," I.CUR ",INV_oper);
-         if(NWOP != tendencia_upper)
+         if(
+            ((USA_M_menor) && (NWOP != tendencia_lower))
+            ||
+            ((USA_M_maior) && (NWOP != tendencia_upper))
+           )
            {
             INV_oper = !INV_oper;
-            Print("X SIT mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"," I.CUR ",INV_oper);
             NWOP++;
             if(NWOP == 3)
               {
                NWOP = 1;
               }
+            Print("X SIT NWOP ", NWOP, "  TENDs ",tendencia_lower," ",tendencia_upper," I.NOW ",INV_oper);
            }
         }
      }
+
    if(NWOP > 0)
      {
       int OO = Orders_by_OP(NWOP);
