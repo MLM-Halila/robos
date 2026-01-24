@@ -24,14 +24,14 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot6";
-sinput string Versao ="1.2";                  //
+sinput string Versao ="1.3";                  //btc
 input group " "
 input group "PARAMETROS"
 input double          INISALDO            = 000;   // Saldo Base
 input int             Pontos_Reabre_OP_em_loss      = 20;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 40;     // Pontos para fechar todas as posições
 input int             Max_oper            = 9;     // Máximo de operações simultâneas
-input double          LOTE               = 0.1;   // Lote base (inicial)
+input double          LOTE               = 0.2;   // Lote base (inicial)
 input group " "
 input group "HORARIOS PARA OPERACAO "
 input group "POR DIA DA SEMANA "
@@ -200,7 +200,7 @@ void OnTick()
    int tempo_prov = SegundosAtual/2;
    if(CountSeconds(tempo_prov, 5) == true)
      {
-      double SDO_VAR_INI = CalcularVariacaoSALDOINICIAL (SALDO_Corrigido());
+      double SDO_VAR_INI = CalcularVariacaoSALDOINICIAL(SALDO_Corrigido());
       if(SDO_VAR_INI < -Sdo_THRESHOLD)
         {
          Close_all_Orders(1);
@@ -213,7 +213,7 @@ void OnTick()
          ABRIUop = false;
          Close_all_losing_operations(0);
          INV_oper = !INV_oper;
-//         Print("X INV_oper ",INV_oper," IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII");
+         //         Print("X INV_oper ",INV_oper," IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII");
         }
       ENUM_TIMEFRAMES lower, upper;
       GetAdjacentTimeframes(PERIOD_CURRENT, lower, upper);
@@ -255,6 +255,11 @@ void OnTick()
          ExpertRemove();
         }
       SEQ_CANDLES++;
+      ENUM_TIMEFRAMES lower, upper;
+      GetAdjacentTimeframes(PERIOD_CURRENT, lower, upper);
+      int LWOP = CheckBollingerSignal(0, Symbol(), lower, 20, 2);
+      int GWOP = CheckBollingerSignal(0, Symbol(), upper, 20, 2);
+      ChartRedraw();
       Processa();
      }
   }
@@ -278,7 +283,7 @@ void Processa()
       OPs_Positivas(1);
       OPs_Positivas(2);
      }
-   NWOP = CheckBollingerSignal(Symbol(), PERIOD_CURRENT, 20, 2);
+   NWOP = CheckBollingerSignal(0, Symbol(), PERIOD_CURRENT, 20, 2);
    if((INV_oper == true) && (NWOP > 0))
      {
       NWOP++;
@@ -342,7 +347,7 @@ void OLDProcessa()
    double s = SALDO_Corrigido();
    CLote = LOTE_Prop();
    int OO = Orders_ON();
-   NWOP = CheckBollingerSignal(Symbol(), PERIOD_CURRENT, 20, 2);
+   NWOP = CheckBollingerSignal(0, Symbol(), PERIOD_CURRENT, 20, 2);
    if(NWOP > 0)
      {
       //      Print("X LIMS ",NWOP," ",USA_M_menor," ",tendencia_lower," ",USA_M_maior," ",tendencia_upper);
@@ -398,7 +403,7 @@ void OLDProcessa()
 //+------------------------------------------------------------------+
 //| Sinais com base nas Bandas de Bollinger                          |
 //+------------------------------------------------------------------+
-int CheckBollingerSignal(string symbol, ENUM_TIMEFRAMES timeframe, int period, double deviation)
+int CheckBollingerSignal(int graf, string symbol, ENUM_TIMEFRAMES timeframe, int period, double deviation)
   {
 // Verifica se os dados estão disponíveis
    if(!SymbolInfoInteger(symbol, SYMBOL_SELECT))
@@ -413,7 +418,7 @@ int CheckBollingerSignal(string symbol, ENUM_TIMEFRAMES timeframe, int period, d
 
    if(boll_handle == INVALID_HANDLE)
       return 0;
-   if(!ChartIndicatorAdd(0, 0, boll_handle))
+   if(!ChartIndicatorAdd(graf, graf, boll_handle))
      {
       //      Print("Erro ao exibir o indicador no gráfico");
      }
@@ -1238,7 +1243,10 @@ double CalcularVariacaoSALDO(double saldo_atual, double tempo_decorrido)
      }
    double delta_saldo = NormalizeDouble(((saldo_atual * 100 / saldo_anterior)-100),2);
    string n = " ";
-   if (delta_saldo <0) {n=" ---------------------";}
+   if(delta_saldo <0)
+     {
+      n=" ---------------------";
+     }
    Print("X SDO VAR ",delta_saldo," ",saldo_atual," ",saldo_anterior,n);
    saldo_anterior = saldo_atual;
    return NormalizeDouble((delta_saldo),2);
@@ -1258,7 +1266,10 @@ double CalcularVariacaoSALDOINICIAL(double I_SDO_atual)
      }
    double delta_saldo = NormalizeDouble(((I_SDO_atual * 100 / I_SDO_anterior)-100),2);
    string n = " ";
-   if (delta_saldo <0) {n=" ---------------------";}
+   if(delta_saldo <0)
+     {
+      n=" ---------------------";
+     }
    Print("X SDO INI ",delta_saldo," ",I_SDO_atual," ",I_SDO_anterior,n);
    return NormalizeDouble((delta_saldo),2);
   }
