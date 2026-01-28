@@ -31,7 +31,7 @@ input double          INISALDO            = 000;   // Saldo Base
 input int             Pontos_Reabre_OP_em_loss      = 20;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 40;     // Pontos para fechar todas as posições
 input int             Max_oper            = 9;     // Máximo de operações simultâneas
-input double          LOTE               = 0.2;   // Lote base (inicial)
+input double          LOTE               = 0.01;   // Lote base (inicial)
 input group " "
 input group "HORARIOS PARA OPERACAO "
 input group "POR DIA DA SEMANA "
@@ -61,6 +61,12 @@ input string          VER                  = "E6";   // Prefixo da mensagem Tele
 
 input group " "
 input group "PROVISORIOS"
+
+input int   DESISTE_MAX_CANDLES    = 20;     // Desiste max candles sem progresso
+input double   DESISTE_MAX_NEG     = 0.01;     // Desiste max Var preco / candles
+
+
+
 input bool USAproj = false; // Usa Projecao
 input int      BB_Period        = 20;      // Período das Bollinger Bands
 input double   BB_Deviation     = 2.0;     // Desvio padrão
@@ -137,6 +143,7 @@ int F2 = 0;
 double MAIORSDO = 0;
 double maiorjerk = 0;
 double menorjerk = 0;
+double MENORpc = 99999999;
 //+------------------------------------------------------------------+
 //| Função de inicialização                                          |
 //+------------------------------------------------------------------+
@@ -154,7 +161,7 @@ int OnInit()
      {
       SALDOINI = SALDO_1;
      }
-   Print("X saldo init ",SALDOINI);
+//   Print("X saldo init ",SALDOINI);
    PropLote = LOTE * 100 / SALDO_1;
    double CCCC = NormalizeDouble(LOTE,2);
    CLote = LOTE_Prop();
@@ -248,6 +255,7 @@ void OnTick()
      {
       if(CountSeconds(Notick, 2) == true)
         {
+         OPs_Intel();
          Processa();
         }
      }
@@ -267,6 +275,7 @@ void OnTick()
       SEQ_CANDLES++;
       ENUM_TIMEFRAMES lower, upper;
       GetAdjacentTimeframes(PERIOD_CURRENT, lower, upper);
+      OPs_Intel();
       Processa();
      }
   }
@@ -1194,7 +1203,7 @@ double CalcularVariacaoSALDO(double saldo_atual, double tempo_decorrido)
      {
       n=" ---------------------";
      }
-   Print("X SDO VAR ",delta_saldo," ",saldo_atual," ",saldo_anterior,n);
+//   Print("X SDO VAR ",delta_saldo," ",saldo_atual," ",saldo_anterior,n);
    saldo_anterior = saldo_atual;
    return NormalizeDouble((delta_saldo),2);
   }
@@ -1217,7 +1226,7 @@ double CalcularVariacaoSALDOINICIAL(double I_SDO_atual)
      {
       n=" ---------------------";
      }
-   Print("X SDO INI ",delta_saldo," ",I_SDO_atual," ",I_SDO_anterior,n);
+//   Print("X SDO INI ",delta_saldo," ",I_SDO_atual," ",I_SDO_anterior,n);
    return NormalizeDouble((delta_saldo),2);
   }
 //+------------------------------------------------------------------+
@@ -1404,4 +1413,113 @@ void LinearForecast(const double &data[], int nData, int nForecast, double &fore
       forecast[j] = a + b * idx;
      }
   }
+//DESISTENCIA---------------------------------------------------+
+//DESISTENCIA---------------------------------------------------+
+//DESISTENCIA---------------------------------------------------+
+void OPs_Intel()
+  {
+   ulong posTicket;
+   bool posSelected;
+   SPREAD = 0;
+   if(TSP)
+     {
+      SPREAD = SymbolInfoDouble(Symbol(),SYMBOL_ASK) - SymbolInfoDouble(Symbol(),SYMBOL_BID);
+     }
+   for(int i = 0; i < PositionsTotal(); i++)
+     {
+      posTicket = PositionGetTicket(i);
+      posSelected = m_position.SelectByTicket(posTicket);
+      if(posTicket>0 && posSelected)
+        {
+         if(m_position.Symbol() == _Symbol && m_position.Magic() == O_magic_number)
+           {
+            ENUM_POSITION_TYPE tipo = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+            int OP = 0;
+            if(tipo == POSITION_TYPE_BUY)
+              {
+               OP = 1;
+              }
+            else
+               if(tipo == POSITION_TYPE_SELL)
+                 {
+                  OP = 2;
+                 }
+           	int CANDS = (TimeCurrent() - PositionGetInteger(POSITION_TIME))/PeriodSeconds();
+            double VAR_preco = 
+            NormalizeDouble((100 * PositionGetDouble(POSITION_PRICE_CURRENT) / PositionGetDouble(POSITION_PRICE_OPEN)),4);
+            VAR_preco = VAR_preco - 100;
+            if(OP == 2)
+              {
+               VAR_preco = VAR_preco * -1;
+              }
+            double VPC = 0;
+            if(CANDS > 0)
+              {
+               VPC = VAR_preco/CANDS;
+              }
+            if(VPC < MENORpc)
+              {
+               MENORpc = VPC;
+              }
+            Print("POSITION_ ",PositionGetInteger(POSITION_IDENTIFIER));
+            Print("POSITION_TYPE ",OP);
+            Print("DIFER_TIME ",CANDS);
+            Print("DIFER_PRICE ",VAR_preco);
+            Print("PRICE / CANDS ",VPC," MENOR ",MENORpc);
+            int chega = 0;
+            if(VPC < -DESISTE_MAX_NEG)
+              {
+               chega = 1;
+              }
+            if((VPC < 0) && (CANDS >= DESISTE_MAX_CANDLES))
+              {
+               chega = 2;
+              }
+            if(chega>0)
+              {
+              Close_Order();
+              Print ("FECHA ",PositionGetInteger(POSITION_IDENTIFIER)," ",chega," FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+              }
+           }
+        }
+     }
+  }
 //+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void Close_Order()
+  {
+//   //T Print("-- FECHA ", Oque);
+   bool falhou = false;
+   for(int i=PositionsTotal()-1; i>=0; i--)
+     {
+      if(m_position.SelectByIndex(i))
+        {
+         if(m_position.Symbol() == _Symbol && m_position.Magic() == O_magic_number)
+           {
+            if(!m_trade.PositionClose(m_position.Ticket()))
+              {
+               falhou = true;
+               //               //T Print("Fecha ","-- FALHOU--- ",m_trade.ResultRetcodeDescription());
+              }
+           }
+        }
+     }
+   if(!falhou)
+     {
+     }
+  }
+
+//DESISTENCIA---------------------------------------------------+
+//DESISTENCIA---------------------------------------------------+
+//DESISTENCIA---------------------------------------------------+
+//            Print("POSITION_IDENTIFIER ",PositionGetInteger(POSITION_IDENTIFIER));
+//            Print("POSITION_TIME ",PositionGetInteger(POSITION_TIME));
+//            Print("CURRENT_TIME ",TimeCurrent());
+//            Print("POSITION_VOLUME ",PositionGetDouble(POSITION_VOLUME));
+//            Print("POSITION_PRICE_OPEN ",PositionGetDouble(POSITION_PRICE_OPEN));
+//            Print("POSITION_SL ",PositionGetDouble(POSITION_SL));
+//            Print("POSITION_TP ",PositionGetDouble(POSITION_TP));
+//            Print("POSITION_PRICE_CURRENT ",PositionGetDouble(POSITION_PRICE_CURRENT));
+//            Print("POSITION_SWAP ",PositionGetDouble(POSITION_SWAP));
+//            Print("POSITION_PROFIT ",PositionGetDouble(POSITION_PROFIT));
