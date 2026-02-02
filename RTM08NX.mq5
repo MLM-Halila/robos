@@ -26,43 +26,43 @@ string GroupChatId="-564508963";
 // PARA BTCUSD H2
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM08N";
-sinput string Versão ="1.0X";                  //
+sinput string Versão ="2.0X";                  //
 input
-double SALDO_DISPONIVEL          = 200;           // Saldo Disponivel para o robo
+double SALDO_DISPONIVEL          = 00;           // Saldo Disponivel para o robo
 input
- int METOD_1                 = 4;           //Metodo
+int METOD_1                 = 4;           //Metodo
 input
- int METOD_2                 = 3;           //Metodo
+int METOD_2                 = 2;           //Metodo
 input
- int MM_media_lenta = 29; //Media gatilho, lenta
+int MM_media_lenta = 29; //Media gatilho, lenta
 input
- int MM_media_media = 7; //Media gatilho, intermediaria
+int MM_media_media = 7; //Media gatilho, intermediaria
 input
- int MM_media_rapida = 3; //Media gatilho, rapida
+int MM_media_rapida = 3; //Media gatilho, rapida
 input
- int Max_dist = 8; //Distancia max para previsão de cruzamento
+int Max_dist = 8; //Distancia max para previsão de cruzamento
 input
- bool inverso             = false;       // Inverter as operações
+bool inverso             = false;       // Inverter as operações
 input
- int dias = 10; //Renova saldo
+int dias = 10; //Renova saldo
 input
- int LimLAT = 85; //Limite indicador lateralização
+int LimLAT = 85; //Limite indicador lateralização
 input
- int XPROP = 2; //Proporcional ao saldo 0, 1, 2
+int XPROP = 2; //Proporcional ao saldo 0, 1, 2
 input
- double RISCO_MAX_LOSS    =  50;    //Risco Maximo em cada LOSS (USD)
+double RISCO_MAX_LOSS    =  20;    //Risco Maximo em cada LOSS (USD)
 input
- double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
+double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
 input
- double F_DIA_MAX_USD_LOSS = 0;  //%  Max USD DIA LOSS (Fecha dia)
+double F_DIA_MAX_USD_LOSS = 0;  //%  Max USD DIA LOSS (Fecha dia)
 input
- double F_CUR_MAX_USD_GAIN = 0;  //%  OP Max USD SALDO GAIN
+double F_CUR_MAX_USD_GAIN = 0;  //%  OP Max USD SALDO GAIN
 input
- double F_CUR_MAX_USD_LOSS = 0;  //%  OP Max USD SALDO LOSS
+double F_CUR_MAX_USD_LOSS = 0;  //%  OP Max USD SALDO LOSS
 
 input int   DESISTE_MAX_CANDLES    = 5;     // Desiste max candles sem progresso
 input double   DESISTE_MAX_NEG     = 0.01;     // Desiste max Var preco / candles
-
+input int OP_ONLY = 0; //OP ONLY, 0,1,2
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -135,7 +135,7 @@ double DIA_MAX_Perc_GAIN = 10000;  // Max perc DIA GAINS (Fecha dia)
 double DIA_MAX_Perc_LOSS = 10000;  // Max perc DIA LOSS (Fecha dia)
 //input
 double CUR_MAX_Perc_GAIN = 10000;  // Max perc SALDO GAIN (FECHA ROBO)
-//input 
+//input
 double CUR_MAX_Perc_LOSS = 10000;  // Max perc SALDO LOSS (FECHA ROBO)
 
 struct CrossProjectionResult
@@ -921,6 +921,13 @@ void COMPRA_OU_VENDA()
                     {
                      NWOP = 1;
                     }
+                 }
+              }
+            if(OP_ONLY > 0)
+              {
+               if(OP_ONLY != NWOP)
+                 {
+                  NWOP = 0;
                  }
               }
             if(NWOP > 0)
@@ -3324,7 +3331,7 @@ int DetectaCruzamentoMACD(int fastEMA = 12, int slowEMA = 26, int signalSMA = 9,
 
 
 
-   //T Print("MACD 2");
+//T Print("MACD 2");
 
 
 
@@ -3675,7 +3682,7 @@ int CheckMACDCross(
   {
 
 
-   //T Print("MACD 1");
+//T Print("MACD 1");
 
 
 // Validate parameters
@@ -3933,9 +3940,9 @@ void OPs_Intel()
                  {
                   OP = 2;
                  }
-           	int CANDS = (TimeCurrent() - PositionGetInteger(POSITION_TIME))/PeriodSeconds();
-            double VAR_preco = 
-            NormalizeDouble((100 * PositionGetDouble(POSITION_PRICE_CURRENT) / PositionGetDouble(POSITION_PRICE_OPEN)),4);
+            int CANDS = (TimeCurrent() - PositionGetInteger(POSITION_TIME))/PeriodSeconds();
+            double VAR_preco =
+               NormalizeDouble((100 * PositionGetDouble(POSITION_PRICE_CURRENT) / PositionGetDouble(POSITION_PRICE_OPEN)),4);
             VAR_preco = VAR_preco - 100;
             if(OP == 2)
               {
@@ -3966,8 +3973,8 @@ void OPs_Intel()
               }
             if(chega>0)
               {
-              Close_OrderD();
-              Print ("FECHA ",PositionGetInteger(POSITION_IDENTIFIER)," ",chega," FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+               Close_OrderD();
+               Print("FECHA ",PositionGetInteger(POSITION_IDENTIFIER)," ",chega," FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
               }
            }
         }

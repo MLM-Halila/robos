@@ -24,14 +24,14 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot6";
-sinput string Versao ="1.3X";                  //btc
+sinput string Versao ="2.0X";                  //btc m30
 input group " "
 input group "PARAMETROS"
-input double          INISALDO            = 500;   // Saldo Base
+input double          INISALDO            = 0;   // Saldo Base
 input int             Pontos_Reabre_OP_em_loss      = 20;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 40;     // Pontos para fechar todas as posições
 input int             Max_oper            = 9;     // Máximo de operações simultâneas
-input double          LOTE               = 0.02;   // Lote base (inicial)
+input double          LOTE               = 0.12;   // Lote base (inicial)
 input group " "
 input group "HORARIOS PARA OPERACAO "
 input group "POR DIA DA SEMANA "
@@ -72,14 +72,15 @@ double             width      = 0;     // Largura linha Bollinger (pontos)
 input
 int             Notick      = 60;     // Tempo para rever ops no tick (Segs)
 input
-double  Sdo_THRESHOLD = 20;// Max QUEDA SALDO inicial
+double  Sdo_THRESHOLD = 50;// Max QUEDA SALDO inicial
 input
-double  Ops_THRESHOLD = 20;// Max QUEDA SALDO operacional
+double  Ops_THRESHOLD = 50;// Max QUEDA SALDO operacional
 input bool USA_M_menor = false; //Confirma com media timeframe menor
 input bool USA_M_maior = false; //Confirma com media timeframe menor
 input int Mquant = 50; //Quant medias
 input
 bool inverso             = true;       // Inverter as operações
+input int OP_ONLY = 0; //OP ONLY, 0,1,2
 input
 int testa             = 0;       // TESTA
 int SegundosAtual;
@@ -284,12 +285,20 @@ void Processa()
       OPs_Positivas(2);
      }
    NWOP = CheckBollingerSignal(0, Symbol(), PERIOD_CURRENT, 20, 2);
+
    if((INV_oper == true) && (NWOP > 0))
      {
       NWOP++;
       if(NWOP == 3)
         {
          NWOP = 1;
+        }
+     }
+   if(OP_ONLY > 0)
+     {
+      if(OP_ONLY != NWOP)
+        {
+         NWOP = 0;
         }
      }
    if(testa == 1)
