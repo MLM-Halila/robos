@@ -23,15 +23,15 @@ int SendMessage(string const token, string chatId,string text);
 #import
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
-sinput string   Robo = "EuroBot6";
-sinput string Versao ="2.0X";                  //btc m30
+sinput string   Robo = "EuroBot6x";
+sinput string Versao ="2.1X";                  //btc m30
 input group " "
 input group "PARAMETROS"
-input double          INISALDO            = 0;   // Saldo Base
-input int             Pontos_Reabre_OP_em_loss      = 20;     // Pontos para reentrada de operação
+input double          INISALDO            = 80;   // Saldo Base
+input int             Pontos_Reabre_OP_em_loss      = 15;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 40;     // Pontos para fechar todas as posições
 input int             Max_oper            = 9;     // Máximo de operações simultâneas
-input double          LOTE               = 0.12;   // Lote base (inicial)
+input double          LOTE               = 0.1;   // Lote base (inicial)
 input group " "
 input group "HORARIOS PARA OPERACAO "
 input group "POR DIA DA SEMANA "
@@ -79,15 +79,18 @@ input bool USA_M_menor = false; //Confirma com media timeframe menor
 input bool USA_M_maior = false; //Confirma com media timeframe menor
 input int Mquant = 50; //Quant medias
 input
-bool inverso             = true;       // Inverter as operações
+bool inverso             = false;       // Inverter as operações
 input int OP_ONLY = 0; //OP ONLY, 0,1,2
 input
 int testa             = 0;       // TESTA
+input int SemMov = 12; //Opera para não ficar parado
+
 int SegundosAtual;
 double             Perda_Maxima      = 0;     // Perda maxima para expertremove
 int tendencia_lower = 0;
 int tendencia_upper = 0;
 int SEQ_CANDLES=0;
+int SEQ_CANDLES_SEM_OP=0;
 int SEQ_CANDLES_COM_OP=0;
 struct SDaySchedule
   {
@@ -283,7 +286,13 @@ void Processa()
       OPs_Negativas(2);
       OPs_Positivas(1);
       OPs_Positivas(2);
+      SEQ_CANDLES_SEM_OP = 0;
      }
+   else
+     {
+      SEQ_CANDLES_SEM_OP++;
+     }
+   Print ("SEM MOV ",SEQ_CANDLES_SEM_OP); 
    NWOP = CheckBollingerSignal(0, Symbol(), PERIOD_CURRENT, 20, 2);
 
    if((INV_oper == true) && (NWOP > 0))
@@ -449,8 +458,17 @@ int CheckBollingerSignal(int graf, string symbol, ENUM_TIMEFRAMES timeframe, int
    double Mwidth = valor_do_ponto * CLote * width;
    if(price_prev > (upper[1]-Mwidth))
       return 2;
-
    if(price_prev < (lower[1]+Mwidth))
+      return 1;
+   if(SEQ_CANDLES_SEM_OP < SemMov)
+     {
+      return 0;
+     }
+   int qs = SemMov+1;
+   Print ("SEM MOV ",iClose(symbol, timeframe, 1)," ",iClose(symbol, timeframe, qs));
+   if(iClose(symbol, timeframe, 1) > iClose(symbol, timeframe, qs))
+      return 2;
+   if(iClose(symbol, timeframe, 1) < iClose(symbol, timeframe, qs))
       return 1;
    return 0;
   }
