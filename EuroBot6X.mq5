@@ -24,7 +24,7 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot6x";
-sinput string Versao ="2.1X";                  //btc m30
+sinput string Versao ="2.2X";                  //btc m30
 input group " "
 input group "PARAMETROS"
 input double          INISALDO            = 80;   // Saldo Base
@@ -84,7 +84,8 @@ input int OP_ONLY = 0; //OP ONLY, 0,1,2
 input
 int testa             = 0;       // TESTA
 input int SemMov = 12; //Opera para não ficar parado
-
+input double MX_l = 100; //MX_L
+input double MX_g = 000; //MX_g
 int SegundosAtual;
 double             Perda_Maxima      = 0;     // Perda maxima para expertremove
 int tendencia_lower = 0;
@@ -191,14 +192,36 @@ void OnTick()
      {
       TelMsg();
      }
-   if(CountSeconds(30, 3) == true)
+   if(CountSeconds(10, 3) == true)
      {
       SALDO_DISP = SALDO_Corrigido();
-      if(SALDO_DISP < -INISALDO)
+      Print("SALDO ",SALDO_Corrigido()," ",SALDOINI);
+      if(SALDO_DISP < 0)
         {
          Close_all_Orders(1);
          Close_all_Orders(2);
+         Print("SALDO ",SALDO_Corrigido()," XXXXXXXXXX");
          ExpertRemove();
+        }
+      if(MX_l > 0)
+        {
+         if(SALDO_DISP < (SALDOINI - MX_l))
+           {
+            Close_all_Orders(1);
+            Close_all_Orders(2);
+            Print("SALDO ",SALDO_Corrigido()," LLLLLLLLLL");
+            ExpertRemove();
+           }
+        }
+      if(MX_g > 0)
+        {
+         if(SALDO_DISP > (SALDOINI + MX_g))
+           {
+            Close_all_Orders(1);
+            Close_all_Orders(2);
+            Print("SALDO ",SALDO_Corrigido()," GGGGGGGGGG");
+            ExpertRemove();
+           }
         }
      }
    int tempo_prov = SegundosAtual/2;
@@ -292,7 +315,7 @@ void Processa()
      {
       SEQ_CANDLES_SEM_OP++;
      }
-   Print ("SEM MOV ",SEQ_CANDLES_SEM_OP); 
+//   Print("SEM MOV ",SEQ_CANDLES_SEM_OP);
    NWOP = CheckBollingerSignal(0, Symbol(), PERIOD_CURRENT, 20, 2);
 
    if((INV_oper == true) && (NWOP > 0))
@@ -465,7 +488,7 @@ int CheckBollingerSignal(int graf, string symbol, ENUM_TIMEFRAMES timeframe, int
       return 0;
      }
    int qs = SemMov+1;
-   Print ("SEM MOV ",iClose(symbol, timeframe, 1)," ",iClose(symbol, timeframe, qs));
+//   Print("SEM MOV ",iClose(symbol, timeframe, 1)," ",iClose(symbol, timeframe, qs));
    if(iClose(symbol, timeframe, 1) > iClose(symbol, timeframe, qs))
       return 2;
    if(iClose(symbol, timeframe, 1) < iClose(symbol, timeframe, qs))
