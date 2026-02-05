@@ -24,11 +24,11 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot6x";
-sinput string Versao ="2.2X";                  //btc m30
+sinput string Versao ="2.3X";                  //btc m30
 input group " "
 input group "PARAMETROS"
-input double          INISALDO            = 80;   // Saldo Base
-input int             Pontos_Reabre_OP_em_loss      = 15;     // Pontos para reentrada de operação
+input double          INISALDO            = 0;   // Saldo Base
+input int             Pontos_Reabre_OP_em_loss      = 10;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 40;     // Pontos para fechar todas as posições
 input int             Max_oper            = 9;     // Máximo de operações simultâneas
 input double          LOTE               = 0.1;   // Lote base (inicial)
@@ -472,12 +472,12 @@ int CheckBollingerSignal(int graf, string symbol, ENUM_TIMEFRAMES timeframe, int
      }
 
    double price_prev = iClose(symbol, timeframe, 1);
-   /*
-      D_linHOR("HH", upper[1], TimeCurrent(), clrBlueViolet, 1);
+/*
+      D_linHOR("HH", upper[1], TimeCurrent(), clrRed, 1);
       D_linHOR("MM", middle[1], TimeCurrent(), clrBlueViolet, 1);
       D_linHOR("LL", lower[1], TimeCurrent(), clrBlueViolet, 1);
       Print("X Prices ",price_prev," ",upper[1]," ",lower[1]);
-   */
+*/
    double Mwidth = valor_do_ponto * CLote * width;
    if(price_prev > (upper[1]-Mwidth))
       return 2;
@@ -488,7 +488,7 @@ int CheckBollingerSignal(int graf, string symbol, ENUM_TIMEFRAMES timeframe, int
       return 0;
      }
    int qs = SemMov+1;
-//   Print("SEM MOV ",iClose(symbol, timeframe, 1)," ",iClose(symbol, timeframe, qs));
+   Print("SEM MOV ",iClose(symbol, timeframe, 1)," ",iClose(symbol, timeframe, qs));
    if(iClose(symbol, timeframe, 1) > iClose(symbol, timeframe, qs))
       return 2;
    if(iClose(symbol, timeframe, 1) < iClose(symbol, timeframe, qs))
@@ -820,7 +820,7 @@ void OPs_Negativas(int OPtipo)
                     };
                   RES = RES - SPREAD;
                   double EMpontos = RES / ValPonto;
-                  //                  Print("Em pontos ",EMpontos," ",RES," ",ValPonto);
+                  Print("Em pontos ",EMpontos," ",RES," ",ValPonto," ",-Pontos_Reabre_OP_em_loss);
                   if(EMpontos < -Pontos_Reabre_OP_em_loss)
                     {
                      double CCCC = LOTE_Prop();
@@ -1064,15 +1064,7 @@ void Close_all_Orders(int OPtipo)
                     }
                if(OP == OPtipo)
                  {
-                  if(OP == 1)
-                    {
-                     F1++;
-                    }
-                  else
-                    {
-                     F2++;
-                    }
-
+                  Print("Fechando posição ", posTicket);
                   if(!m_trade.PositionClose(posTicket))
                     {
                      Print("Erro ao fechar posição ", posTicket, " | Código: ", GetLastError());
