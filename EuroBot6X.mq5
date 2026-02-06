@@ -24,11 +24,11 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot6x";
-sinput string Versao ="2.3X";                  //btc m30
+sinput string Versao ="2.3m X";                  //gold m30 25/01 a 03/06
 input group " "
 input group "PARAMETROS"
 input double          INISALDO            = 0;   // Saldo Base
-input int             Pontos_Reabre_OP_em_loss      = 10;     // Pontos para reentrada de operação
+input int             Pontos_Reabre_OP_em_loss      = 30;     // Pontos para reentrada de operação
 input int             Pontos_Tot_Fecha    = 40;     // Pontos para fechar todas as posições
 input int             Max_oper            = 9;     // Máximo de operações simultâneas
 input double          LOTE               = 0.1;   // Lote base (inicial)
@@ -79,12 +79,12 @@ input bool USA_M_menor = false; //Confirma com media timeframe menor
 input bool USA_M_maior = false; //Confirma com media timeframe menor
 input int Mquant = 50; //Quant medias
 input
-bool inverso             = false;       // Inverter as operações
+bool inverso             = true;       // Inverter as operações
 input int OP_ONLY = 0; //OP ONLY, 0,1,2
 input
 int testa             = 0;       // TESTA
 input int SemMov = 12; //Opera para não ficar parado
-input double MX_l = 100; //MX_L
+input double MX_l = 000; //MX_L
 input double MX_g = 000; //MX_g
 int SegundosAtual;
 double             Perda_Maxima      = 0;     // Perda maxima para expertremove
@@ -195,7 +195,11 @@ void OnTick()
    if(CountSeconds(10, 3) == true)
      {
       SALDO_DISP = SALDO_Corrigido();
-      Print("SALDO ",SALDO_Corrigido()," ",SALDOINI);
+      if(SALDO_DISP > MAIORSDO)
+        {
+         MAIORSDO = SALDO_DISP;
+        }
+      Print("X SALDO ",SALDOINI," ",SALDO_DISP," ",MAIORSDO);
       if(SALDO_DISP < 0)
         {
          Close_all_Orders(1);
@@ -801,7 +805,7 @@ void OPs_Negativas(int OPtipo)
                string c = PositionGetString(POSITION_COMMENT);
                long Sl = StringToInteger(c);
                int Sq = (int)Sl;
-               //               Print("X LOOP - ",OP," sq ",Sq," ",SeqOPer1," ",SeqOPer2);
+                             Print("X LOOP - ",OP," sq ",Sq," ",SeqOPer1," ",SeqOPer2);
                if(((OP == 1) && (Sq == SeqOPer1)) || ((OP == 2) && (Sq == SeqOPer2)))
                  {
                   //                  Print("X TEM1 - ",OP," sq ",Sq," ",SeqOPer1," ",SeqOPer2);
