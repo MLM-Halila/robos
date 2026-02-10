@@ -24,7 +24,7 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot9";
-sinput string Versao ="1.2";                  //gold m30 25/01 a 03/06
+sinput string Versao ="1.4";                  //gold m30 25/01 a 03/06
 input group " "
 input group "PARAMETROS"
 input double          INISALDO            = 0;   // Saldo Base
@@ -43,9 +43,9 @@ input string          VER                  = "X2";   // Prefixo da mensagem Tele
 input group " "
 input group "PROVISORIOS"
 input bool picos = true;     // Usa picos e fundos
-input int    SampleSeconds      = 20;     // S segundos entre amostras
+input int    SampleSeconds      = 10;     // S segundos entre amostras
 input int    LookbackPeriods    = 12;     // X períodos para detectar pico/fundo
-input double MaxDrawdownPercent = 15.0;   // % de drawdown máximo → parar
+input double MaxDrawdownPercent = 45.0;   // % de drawdown máximo → parar
 input double PeakDipPercent     = 0.2;    // % de queda após pico para fechar
 input double TroughRisePercent  = 8;    // % de recuperação após fundo
 input double SpeedThresholdPercent = 0.4; // % de variação por amostra para considerar "rápido"
@@ -247,7 +247,8 @@ void OnTick()
         {
          Close_all_Orders(1);
          Close_all_Orders(2);
-         Print("SALDO ",SALDO_Corrigido()," XXXXXXXXXX");
+         Print("SALDO ",SALDO_Corrigido()," Fim Saldo");
+         Tel_ALARM("SALDO "+SALDO_Corrigido()+" Fim Saldo");
          ExpertRemove();
         }
       if(MX_l > 0)
@@ -257,6 +258,7 @@ void OnTick()
             Close_all_Orders(1);
             Close_all_Orders(2);
             Print("SALDO ",SALDO_Corrigido()," LLLLLLLLLL");
+            Tel_ALARM("SALDO "+SALDO_Corrigido()+" Menor MAX loss");
             ExpertRemove();
            }
         }
@@ -267,6 +269,7 @@ void OnTick()
             Close_all_Orders(1);
             Close_all_Orders(2);
             Print("SALDO ",SALDO_Corrigido()," GGGGGGGGGG");
+            Tel_ALARM("SALDO "+SALDO_Corrigido()+" Maior MAX gain");
             ExpertRemove();
            }
         }
@@ -279,6 +282,7 @@ void OnTick()
         {
          Close_all_Orders(1);
          Close_all_Orders(2);
+         Tel_ALARM("SALDO "+SALDO_Corrigido()+" Menor MAX thr.loss");
          ExpertRemove();
         }
       double SDO_VAR = CalcularVariacaoSALDO(SALDO_Corrigido(), tempo_prov);
@@ -704,6 +708,33 @@ void DASHBOARD(double res)
    ObjectSetDouble(0,label_name,OBJPROP_ANGLE,0);
    ObjectSetInteger(0,label_name,OBJPROP_SELECTABLE,false);
    ChartRedraw(0);
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void Tel_ALARM(string TXT)
+  {
+   long NConta = (AccountInfoInteger(ACCOUNT_LOGIN));
+   string XConta = DoubleToString(NConta,0);
+   double SALDO_Atual = SALDO_Corrigido();
+//   Print(SALDO_Anterior," ",SALDO_Atual);
+   if(SALDO_Inicial == 0)
+     {
+      SALDO_Inicial = SALDO_Atual;
+     }
+   if(SALDO_Anterior == 0)
+     {
+      SALDO_Anterior = SALDO_Atual;
+     }
+   string Telegram_Message=
+      VER+" "+
+      XConta+" "+
+      TXT;
+   Print(Telegram_Message);
+   if(TEL == true)
+     {
+      SendMessage(InpToken, GroupChatId, Telegram_Message);
+     }
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
