@@ -28,10 +28,10 @@ sinput string Versao ="1.4";                  //gold m30 25/01 a 03/06
 input group " "
 input group "PARAMETROS"
 input double          INISALDO            = 0;   // Saldo Base
-input int             Pontos_Reabre_OP_em_loss      = 30;     // Pontos para reentrada de operação
-input int             Pontos_Tot_Fecha    = 40;     // Pontos para fechar todas as posições
-input int             Max_oper            = 9;     // Máximo de operações simultâneas
-input double          LOTE               = 0.02;   // Lote base (inicial)
+input int             Pontos_Reabre_OP_em_loss      = 10;     // Pontos para reentrada de operação
+input int             Pontos_Tot_Fecha    = 45;     // Pontos para fechar todas as posições
+input int             Max_oper            = 20;     // Máximo de operações simultâneas
+input double          LOTE               = 0.2;   // Lote base (inicial)
 input group " "
 input group "NOTIFICACOES TELEGRAM"
 input string InpToken="1617382308:AAEmQf9aWNwVrjnbdCY0Ni8bvkBc3E6VBVI";//Token do bot que esta no nosso grupo
@@ -44,8 +44,8 @@ input group " "
 input group "PROVISORIOS"
 input bool picos = true;     // Usa picos e fundos
 input int    SampleSeconds      = 10;     // S segundos entre amostras
-input int    LookbackPeriods    = 12;     // X períodos para detectar pico/fundo
-input double MaxDrawdownPercent = 45.0;   // % de drawdown máximo → parar
+input int    LookbackPeriods    = 14;     // X períodos para detectar pico/fundo
+input double MaxDrawdownPercent = 15.0;   // % de drawdown máximo → parar
 input double PeakDipPercent     = 0.2;    // % de queda após pico para fechar
 input double TroughRisePercent  = 8;    // % de recuperação após fundo
 input double SpeedThresholdPercent = 0.4; // % de variação por amostra para considerar "rápido"
@@ -58,7 +58,7 @@ double             Fator_Reabre_OP_em_Gain      = 1;     // Pontos para reentrad
 input
 double             width      = 0;     // Largura linha Bollinger (pontos)
 input
-int             Notick      = 60;     // Tempo para rever ops no tick (Segs)
+int             Notick      = 20;     // Tempo para rever ops no tick (Segs)
 input
 double  Sdo_THRESHOLD = 50;// Max QUEDA SALDO inicial
 input
@@ -71,9 +71,9 @@ bool inverso             = true;       // Inverter as operações
 input int OP_ONLY = 0; //OP ONLY, 0,1,2
 input
 int testa             = 0;       // TESTA
-input int SemMov = 12; //Opera para não ficar parado
-input double MX_l = 50; //MX_L
-input double MX_g = 200; //MX_g
+input int SemMov = 5; //Opera para não ficar parado
+input double MX_l = 00; //MX_L
+input double MX_g = 00; //MX_g
 input group " "
 input group "HORARIOS PARA OPERACAO "
 input group "POR DIA DA SEMANA "
@@ -216,12 +216,12 @@ void OnTick()
       double currentEquity = SALDO_Corrigido();
       AddEquityToHistory(currentEquity);
       string action = AnalyzeEquityCurve();
-      Print("X Equity Curve → Ação sugerida: ", action);
+//      Print("X Equity Curve → Ação sugerida: ", action);
       if(action == "FECHAR")
         {
          Close_all_Orders(1);
          Close_all_Orders(2);
-         Print("SALDO ",SALDO_Corrigido()," SSSSSSSSSSSSSSSSSS FECHAR ");
+         Print("SALDO ",SALDO_Corrigido()," AnalyzeEquityCurve: FECHAR ");
         }
       /*
             //   if(action == "MESMO")    OpenNewPositionInCurrentDirection();
@@ -247,7 +247,6 @@ void OnTick()
         {
          Close_all_Orders(1);
          Close_all_Orders(2);
-         Print("SALDO ",SALDO_Corrigido()," Fim Saldo");
          Tel_ALARM("SALDO "+SALDO_Corrigido()+" Fim Saldo");
          ExpertRemove();
         }
@@ -257,7 +256,6 @@ void OnTick()
            {
             Close_all_Orders(1);
             Close_all_Orders(2);
-            Print("SALDO ",SALDO_Corrigido()," LLLLLLLLLL");
             Tel_ALARM("SALDO "+SALDO_Corrigido()+" Menor MAX loss");
             ExpertRemove();
            }
@@ -268,7 +266,6 @@ void OnTick()
            {
             Close_all_Orders(1);
             Close_all_Orders(2);
-            Print("SALDO ",SALDO_Corrigido()," GGGGGGGGGG");
             Tel_ALARM("SALDO "+SALDO_Corrigido()+" Maior MAX gain");
             ExpertRemove();
            }
@@ -291,7 +288,7 @@ void OnTick()
          ABRIUop = false;
          Close_all_losing_operations(0);
          INV_oper = !INV_oper;
-         //         Print("X INV_oper ",INV_oper," IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII");
+         Tel_ALARM("SALDO "+SALDO_Corrigido()+" Var SDO, close em loss");
         }
       ENUM_TIMEFRAMES lower, upper;
       GetAdjacentTimeframes(PERIOD_CURRENT, lower, upper);
@@ -300,6 +297,7 @@ void OnTick()
          tendencia_lower = EMATrend(21, lower, Mquant);
          if(testa == 2)
            {
+           Tel_ALARM("SALDO "+SALDO_Corrigido()+" TST2 lower, close em loss");
             Close_all_losing_operations(tendencia_lower);
            }
         }
@@ -308,6 +306,7 @@ void OnTick()
          tendencia_upper = EMATrend(21, upper, Mquant);
          if(testa == 2)
            {
+            Tel_ALARM("SALDO "+SALDO_Corrigido()+" TST2 upper, close em loss");
             Close_all_losing_operations(tendencia_upper);
            }
         }
@@ -716,19 +715,11 @@ void Tel_ALARM(string TXT)
   {
    long NConta = (AccountInfoInteger(ACCOUNT_LOGIN));
    string XConta = DoubleToString(NConta,0);
-   double SALDO_Atual = SALDO_Corrigido();
-//   Print(SALDO_Anterior," ",SALDO_Atual);
-   if(SALDO_Inicial == 0)
-     {
-      SALDO_Inicial = SALDO_Atual;
-     }
-   if(SALDO_Anterior == 0)
-     {
-      SALDO_Anterior = SALDO_Atual;
-     }
+   double SAL = NormalizeDouble(SALDO_Corrigido(),2);
    string Telegram_Message=
       VER+" "+
       XConta+" "+
+      DoubleToString(SAL,2)+" "+
       TXT;
    Print(Telegram_Message);
    if(TEL == true)
@@ -1388,7 +1379,7 @@ double CalcularVariacaoSALDOINICIAL(double I_SDO_atual)
    string n = " ";
    if(delta_saldo <0)
      {
-      n=" ---------------------";
+      n=" delta_saldo <0 ---------------------";
      }
    Print("X SDO INI ",delta_saldo," ",I_SDO_atual," ",I_SDO_anterior,n);
    return NormalizeDouble((delta_saldo),2);
