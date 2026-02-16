@@ -26,19 +26,19 @@ string GroupChatId="-564508963";
 // PARA BTCUSD H2
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM11";
-sinput string Versão ="1.1";                  //
+sinput string Versão ="1.2";                  //BTC
 input
 double SALDO_DISPONIVEL          = 00;           // Saldo Disponivel para o robo
 input
 int METOD_1                 = 7;           //Metodo
 input
-int METOD_2                 = 0;           //Metodo
+int METOD_2                 = 1;           //Metodo
 input
-int MM_media_lenta = 17; //Media gatilho, lenta
+int MM_media_lenta = 16; //Media gatilho, lenta
 input
-int MM_media_media = 12; //Media gatilho, intermediaria
+int MM_media_media = 11; //Media gatilho, intermediaria
 input
-int MM_media_rapida = 6; //Media gatilho, rapida
+int MM_media_rapida = 7; //Media gatilho, rapida
 input
 int Max_dist = 8; //Distancia max para previsão de cruzamento
 input
@@ -50,7 +50,7 @@ int LimLAT = 85; //Limite indicador lateralização
 input
 int XPROP = 2; //Proporcional ao saldo 0, 1, 2
 input
-double RISCO_MAX_LOSS    =  20;    //Risco Maximo em cada LOSS (USD)
+double RISCO_MAX_LOSS    =  25;    //Risco Maximo em cada LOSS (USD)
 input
 double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
 input
@@ -69,9 +69,8 @@ input int    Candle_N         = 5;          // Candle -N (ex: 5, 8, 10...)
 input double Threshold_TC     = 10.0;       // Tamanho médio mínimo do candle (em pontos) para considerar momentum
 input double Threshold_PT     = 70.0;       // Pontuação mínima para sinal de entrada (ajuste no otimizador)
 input double Lote             = 0.10;       // Tamanho do lote fixo (ajuste conforme sua conta)
-input int    MagicNumber      = 202510;     // Número mágico para identificar ordens deste EA
 input int    Slippage         = 3;          // Deslizamento máximo permitido
-
+input bool XTRS = false; // Trailing stops
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -95,7 +94,7 @@ double DIA_MAX_USD_GAIN = 0;  // Max USD DIA GAIN (Fecha dia)
 bool OPTC = true; //OPTC
 bool OPTM = true; //OPTM
 bool OPTD = false; //OPTD3
-bool XTRS = false; // Trailing stops
+
 double Gfat = 1; //X Gfat
 double Lfat = 1.1; //X Lfat
 double OPR_MAX_Perc_GAIN = 150;  // Max perc OPER GAIN (Abre outra oper)
@@ -4171,16 +4170,18 @@ int INTEL_proc()
                        && (vdc[0] < 0)
                        && (CrossScore < 0)
                        && (vmp[0] < vmg[0]);
-   if(sinal_compra || sinal_venda || true) // true = sempre mostrar para debug
-     {
-      string status = sinal_compra ? "COMPRA" : (sinal_venda ? "VENDA" : "NEUTRO");
-      Print("=== ", TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES), " ===");
-      Print("PT: ", DoubleToString(PT, 1), " | CrossScore: ", DoubleToString(CrossScore, 2));
-      Print("MomentumTC: ", DoubleToString(MomentumTC, 1), " | Align: ", AlignScore);
-      Print("SeqScore: ", DoubleToString(SeqScore, 2), " | SlopeMG: ", DoubleToString(SlopeMG, 5));
-      Print("Status: ", status, " | TC médio: ", DoubleToString(avg_tc, 1), " pts");
-      Print("MP0: ", DoubleToString(vmp[0], _Digits), " | MG0: ", DoubleToString(vmg[0], _Digits));
-     }
+   /*   if(sinal_compra || sinal_venda || true) // true = sempre mostrar para debug
+        {
+         string status = sinal_compra ? "COMPRA" : (sinal_venda ? "VENDA" : "NEUTRO");
+         Print("=== ", TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES), " ===");
+         Print("PT: ", DoubleToString(PT, 1), " | CrossScore: ", DoubleToString(CrossScore, 2));
+         Print("MomentumTC: ", DoubleToString(MomentumTC, 1), " | Align: ", AlignScore);
+         Print("SeqScore: ", DoubleToString(SeqScore, 2), " | SlopeMG: ", DoubleToString(SlopeMG, 5));
+         Print("Status: ", status, " | TC médio: ", DoubleToString(avg_tc, 1), " pts");
+         Print("MP0: ", DoubleToString(vmp[0], _Digits), " | MG0: ", DoubleToString(vmg[0], _Digits));
+        }
+   */
+   int r1 = 0;
    int rt = 0;
    if(sinal_compra)
      {
@@ -4190,6 +4191,49 @@ int INTEL_proc()
      {
       rt = 2;
      }
+   r1 = rt;
+   if(rt == 0)
+     {
+      rt = INTEL_cross(1,3);
+     }
+   if(rt > 0)
+     {
+      Print("RES: ",r1," ",rt);
+     }
    return rt;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+int INTEL_cross(int x, int y)
+  {
+   int op = 0;
+   if
+   (
+      (vmp[x] > vmg[x])
+      &&
+      (
+         (vmp[x] < vmp[y])
+         ||
+         (vmg[x] > vmg[y])
+      )
+   )
+     {
+      op = 1;
+     }
+   if
+   (
+      (vmp[x] < vmg[x])
+      &&
+      (
+         (vmp[x] > vmp[y])
+         ||
+         (vmg[x] < vmg[y])
+      )
+   )
+     {
+      op = 2;
+     }
+   return op;
   }
 //+------------------------------------------------------------------+
