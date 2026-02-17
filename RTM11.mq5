@@ -26,7 +26,7 @@ string GroupChatId="-564508963";
 // PARA BTCUSD H2
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM11";
-sinput string Versão ="1.2";                  //BTC
+sinput string Versão ="1.6";                  //BTC
 input
 double SALDO_DISPONIVEL          = 00;           // Saldo Disponivel para o robo
 input
@@ -34,11 +34,11 @@ int METOD_1                 = 7;           //Metodo
 input
 int METOD_2                 = 1;           //Metodo
 input
-int MM_media_lenta = 16; //Media gatilho, lenta
+int MM_media_lenta = 18; //Media gatilho, lenta
 input
 int MM_media_media = 11; //Media gatilho, intermediaria
 input
-int MM_media_rapida = 7; //Media gatilho, rapida
+int MM_media_rapida = 3; //Media gatilho, rapida
 input
 int Max_dist = 8; //Distancia max para previsão de cruzamento
 input
@@ -50,7 +50,7 @@ int LimLAT = 85; //Limite indicador lateralização
 input
 int XPROP = 2; //Proporcional ao saldo 0, 1, 2
 input
-double RISCO_MAX_LOSS    =  25;    //Risco Maximo em cada LOSS (USD)
+double RISCO_MAX_LOSS    =  5;    //Risco Maximo em cada LOSS (USD)
 input
 double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
 input
@@ -87,7 +87,7 @@ bool Xtend = false; //Usar tendência
 int TT_media_tend = 21; //Media para a tendência
 ENUM_TIMEFRAMES TT_Period = PERIOD_W1; //Tempo grafico para a tendência
 bool usainv             = false;       // Auto invert
-int Q_OP_simult                   = 1;           // Quant. máxima de operações simultaneas
+int Q_OP_simult                   = 10;           // Quant. máxima de operações simultaneas
 int TempoVS            = 60;           // Segundos entre revisão de oper.
 bool addSPREAD            = true;       // Add SPREAD
 double DIA_MAX_USD_GAIN = 0;  // Max USD DIA GAIN (Fecha dia)
@@ -978,7 +978,19 @@ void COMPRA_OU_VENDA()
               {
                Close_Order();
               }
-
+            int OOC = 0;
+            if(NWOP == 1)
+              {
+               OOC = 2;
+              }
+            if(NWOP == 2)
+              {
+               OOC = 1;
+              }
+            if(OOC > 0)
+              {
+               Close_ALL_X(OOC);
+              }
             if(NWOP == 1)
               {
                OrderCOMPRA();
@@ -1014,7 +1026,7 @@ void OrderCOMPRA()
    SPREAD = V_CURRENT_ASK - V_CURRENT_BID;
    requisicao.action       = TRADE_ACTION_DEAL;                            // Executa ordem a mercado
    requisicao.magic        = O_magic_number;                               // Nº mágico da ordem
-   requisicao.symbol       = _Symbol;                                      // Simbolo do SYMB
+   requisicao.symbol       = _Symbol;                                      // compbolo do SYMB
    requisicao.price        = NormalizeDouble(open_price,_Digits);                  // Preço para a compra
    requisicao.sl           = NormalizeDouble(Valloss,_Digits);             // Preço Stop Loss
    requisicao.tp           = NormalizeDouble(Valgain,_Digits);             // Alvo de Ganho - Take Profit
@@ -4045,6 +4057,45 @@ void Close_OrderD()
      {
      }
   }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void Close_ALL_X(int OPtipo)
+  {
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+     {
+      ulong posTicket = PositionGetTicket(i);
+
+      if(posTicket > 0)
+        {
+         if(m_position.SelectByIndex(i))
+           {
+            if(m_position.Symbol() == _Symbol && m_position.Magic() == O_magic_number)
+              {
+               ENUM_POSITION_TYPE tipo = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+               int OP = 0;
+               if(tipo == POSITION_TYPE_BUY)
+                 {
+                  OP = 1;
+                 }
+               else
+                  if(tipo == POSITION_TYPE_SELL)
+                    {
+                     OP = 2;
+                    }
+               if(OP == OPtipo)
+                 {
+                  Print("Fechando posição ", OP," ",posTicket);
+                  if(!m_trade.PositionClose(posTicket))
+                    {
+                     Print("Erro ao fechar posição ", posTicket, " | Código: ", GetLastError());
+                    }
+                 }
+              }
+           }
+        }
+     }
+  }
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -4192,9 +4243,13 @@ int INTEL_proc()
       rt = 2;
      }
    r1 = rt;
+   
+   rt = 0;
+   
+   
    if(rt == 0)
      {
-      rt = INTEL_cross(1,3);
+      rt = INTEL_cross(0,3);
      }
    if(rt > 0)
      {
