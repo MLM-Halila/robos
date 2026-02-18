@@ -26,7 +26,7 @@ string GroupChatId="-564508963";
 // PARA BTCUSD H2
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM11";
-sinput string Versão ="1.6";                  //BTC
+sinput string Versão ="1.9";                  //Gold H1 100k > 5,182M
 input
 double SALDO_DISPONIVEL          = 00;           // Saldo Disponivel para o robo
 input
@@ -34,27 +34,27 @@ int METOD_1                 = 7;           //Metodo
 input
 int METOD_2                 = 1;           //Metodo
 input
-int MM_media_lenta = 18; //Media gatilho, lenta
+int MM_media_lenta = 28; //Media gatilho, lenta
 input
 int MM_media_media = 11; //Media gatilho, intermediaria
 input
-int MM_media_rapida = 3; //Media gatilho, rapida
+int MM_media_rapida = 9; //Media gatilho, rapida
 input
 int Max_dist = 8; //Distancia max para previsão de cruzamento
 input
 bool inverso             = false;       // Inverter as operações
 input
-int dias = 10; //Renova saldo
+int dias = 60; //Renova saldo
 input
 int LimLAT = 85; //Limite indicador lateralização
 input
 int XPROP = 2; //Proporcional ao saldo 0, 1, 2
 input
-double RISCO_MAX_LOSS    =  5;    //Risco Maximo em cada LOSS (USD)
+double RISCO_MAX_LOSS    =  25;    //Risco Maximo em cada LOSS (USD)
 input
 double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
 input
-double F_DIA_MAX_USD_LOSS = 0;  //%  Max USD DIA LOSS (Fecha dia)
+double F_DIA_MAX_USD_LOSS = 20;  //%  Max USD DIA LOSS (Fecha dia)
 input
 double F_CUR_MAX_USD_GAIN = 0;  //%  OP Max USD SALDO GAIN
 input
@@ -4243,10 +4243,10 @@ int INTEL_proc()
       rt = 2;
      }
    r1 = rt;
-   
+
    rt = 0;
-   
-   
+
+
    if(rt == 0)
      {
       rt = INTEL_cross(0,3);
@@ -4289,6 +4289,83 @@ int INTEL_cross(int x, int y)
      {
       op = 2;
      }
+   if(op == 0)
+     {
+      op = INTEL_UD();
+     }
    return op;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+int INTEL_UD()
+  {
+   int IMAXvmp  = ArrayMaximum(vmp);
+   int IMAXvmg  = ArrayMaximum(vmg);
+   int IMAXvpi  = ArrayMaximum(vpi);
+   int IMAXvpf  = ArrayMaximum(vpf);
+   int IMAXvtc  = ArrayMaximum(vtc);
+   int IMINvmp  = ArrayMinimum(vmp);
+   int IMINvmg  = ArrayMinimum(vmg);
+   int IMINvpi  = ArrayMinimum(vpi);
+   int IMINvpf  = ArrayMinimum(vpf);
+   int IMINvtc  = ArrayMinimum(vtc);
+   Print ("is ",
+         IMAXvmp
+   ," ", IMAXvmg  
+   ," ", IMAXvpi
+   ," ", IMAXvpf 
+   ," ", IMAXvtc  
+   ," ", IMINvmp 
+   ," ", IMINvmg  
+   ," ", IMINvpi  
+   ," ", IMINvpf  
+   ," ", IMINvtc 
+);
+   int UPq = 0;
+   int DWq = 0;
+   if(IMAXvmp < 1)
+     {
+      UPq++;
+     }
+   if(IMAXvmg < 1)
+     {
+      UPq++;
+     }
+   if(IMAXvpi < 1)
+     {
+      UPq++;
+     }
+   if(IMAXvpf < 1)
+     {
+      UPq++;
+     }
+   if(IMINvmp < 1)
+     {
+      DWq++;
+     }
+   if(IMINvmg < 1)
+     {
+      DWq++;
+     }
+   if(IMINvpi < 1)
+     {
+      DWq++;
+     }
+   if(IMINvpf < 1)
+     {
+      DWq++;
+     }
+   int Ur = 0;
+   if(UPq > DWq)
+     {
+      Ur = 1;
+     }
+   if(UPq < DWq)
+     {
+      Ur = 2;
+     }
+   Print("INTtend : ", Ur,"  UP ", UPq, "  DW ", DWq);
+   return Ur;
   }
 //+------------------------------------------------------------------+
