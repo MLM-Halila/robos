@@ -26,7 +26,7 @@ string GroupChatId="-564508963";
 // PARA BTCUSD H2
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM11";
-sinput string Versão ="1.9";                  //Gold H1 100k > 5,182M
+sinput string Versão ="1.9IF";                  //Gold H1 100k > 5,182M
 input
 double SALDO_DISPONIVEL          = 00;           // Saldo Disponivel para o robo
 input
@@ -42,7 +42,7 @@ int MM_media_rapida = 9; //Media gatilho, rapida
 input
 int Max_dist = 8; //Distancia max para previsão de cruzamento
 input
-bool inverso             = false;       // Inverter as operações
+bool inverso             = false;       // Inverter as operações =======
 input
 int dias = 60; //Renova saldo
 input
@@ -59,10 +59,14 @@ input
 double F_CUR_MAX_USD_GAIN = 0;  //%  OP Max USD SALDO GAIN
 input
 double F_CUR_MAX_USD_LOSS = 0;  //%  OP Max USD SALDO LOSS
-
+input int SemMov = 6; //Opera se ficar parado
 input int   DESISTE_MAX_CANDLES    = 5;     // Desiste max candles sem progresso
 input double   DESISTE_MAX_NEG     = 0.01;     // Desiste max Var preco / candles
 input int OP_ONLY = 0; //OP ONLY, 0,1,2
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 int    MP_Periodo       = MM_media_rapida;          // Período da Média Pequena (rápida)
 int    MG_Periodo       = MM_media_lenta;         // Período da Média Grande (lenta)
 input int    Candle_N         = 5;          // Candle -N (ex: 5, 8, 10...)
@@ -167,7 +171,7 @@ double CL_lote = 0;
 double CL_open_price = 0;
 double CL_valor_loss = 0;
 double CL_valor_gain = 0;
-
+int SEQ_CANDLES_SEM_OP=0;
 
 
 
@@ -549,6 +553,14 @@ void OnTick()
       SALVA_TKpreco(((V_CURRENT_ASK + V_CURRENT_BID)/2), 20);
       High_Low();
       int temOP = Orders_ON();
+      if(temOP > 0)
+        {
+         SEQ_CANDLES_SEM_OP = 0;
+        }
+      else
+        {
+         SEQ_CANDLES_SEM_OP++;
+        }
       if(temOP == 0)
         {
          D_linHOR("HH", highest_high, now, clrBlueViolet, 1);
@@ -949,6 +961,16 @@ void COMPRA_OU_VENDA()
                     }
                  }
               }
+            Print("SEM MOV ",SemMov," ",NWOP," ",SEQ_CANDLES_SEM_OP," ",iClose(_Symbol, PERIOD_CURRENT, 1)," ",iClose(_Symbol, PERIOD_CURRENT, (SemMov+1)));
+            if((NWOP == 0) && (SemMov > 0) && (SEQ_CANDLES_SEM_OP >= SemMov))
+              {
+               int qs = SemMov+1;
+               if(iClose(_Symbol, PERIOD_CURRENT, 1) > iClose(_Symbol, PERIOD_CURRENT, qs))
+                  NWOP = 1;
+               if(iClose(_Symbol, PERIOD_CURRENT, 1) < iClose(_Symbol, PERIOD_CURRENT, qs))
+                  NWOP = 2;
+               //               Print("SEM MOV ",NWOP," ",iClose(_Symbol, PERIOD_CURRENT, 1)," ",iClose(_Symbol, PERIOD_CURRENT, qs));
+              }
             if(NWOP > 0)
               {
                if(CUR_INVER == true)
@@ -1088,6 +1110,7 @@ void OrderVENDA()
 void Place_Order(MqlTradeRequest &requisicao)
   {
    Oque = IntegerToString(C_V);
+   SEQ_CANDLES_SEM_OP = 0;
 //   //T Print("Q ",qm++," Place_Order ", Oque," (", TENDENCIA_c_v,") Price ",requisicao.price," StopLoss ",requisicao.sl," StopGain ",requisicao.tp);
    MqlTradeCheckResult checkResult;
    MqlTradeResult resposta;
@@ -4310,18 +4333,18 @@ int INTEL_UD()
    int IMINvpi  = ArrayMinimum(vpi);
    int IMINvpf  = ArrayMinimum(vpf);
    int IMINvtc  = ArrayMinimum(vtc);
-   Print ("is ",
+   Print("is ",
          IMAXvmp
-   ," ", IMAXvmg  
-   ," ", IMAXvpi
-   ," ", IMAXvpf 
-   ," ", IMAXvtc  
-   ," ", IMINvmp 
-   ," ", IMINvmg  
-   ," ", IMINvpi  
-   ," ", IMINvpf  
-   ," ", IMINvtc 
-);
+         ," ", IMAXvmg
+         ," ", IMAXvpi
+         ," ", IMAXvpf
+         ," ", IMAXvtc
+         ," ", IMINvmp
+         ," ", IMINvmg
+         ," ", IMINvpi
+         ," ", IMINvpf
+         ," ", IMINvtc
+        );
    int UPq = 0;
    int DWq = 0;
    if(IMAXvmp < 1)
