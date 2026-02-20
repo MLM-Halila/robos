@@ -26,9 +26,9 @@ string GroupChatId="-564508963";
 // PARA BTCUSD H2
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM11";
-sinput string Versão ="1.9IF";                  //Gold H1 100k > 5,182M
+sinput string Versão ="1.11IF";                  //Gold H1 100k > 5,182M
 input
-double SALDO_DISPONIVEL          = 00;           // Saldo Disponivel para o robo
+double SALDO_DISPONIVEL          = 0000;           // Saldo Disponivel para o robo
 input
 int METOD_1                 = 7;           //Metodo
 input
@@ -50,11 +50,11 @@ int LimLAT = 85; //Limite indicador lateralização
 input
 int XPROP = 2; //Proporcional ao saldo 0, 1, 2
 input
-double RISCO_MAX_LOSS    =  25;    //Risco Maximo em cada LOSS (USD)
+double RISCO_MAX_LOSS    =  15;    //Risco Maximo em cada LOSS (USD)
 input
 double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
 input
-double F_DIA_MAX_USD_LOSS = 20;  //%  Max USD DIA LOSS (Fecha dia)
+double F_DIA_MAX_USD_LOSS = 0;  //%  Max USD DIA LOSS (Fecha dia)
 input
 double F_CUR_MAX_USD_GAIN = 0;  //%  OP Max USD SALDO GAIN
 input
@@ -75,7 +75,7 @@ input double Threshold_PT     = 70.0;       // Pontuação mínima para sinal de
 input double Lote             = 0.10;       // Tamanho do lote fixo (ajuste conforme sua conta)
 input int    Slippage         = 3;          // Deslizamento máximo permitido
 input bool XTRS = false; // Trailing stops
-
+input int XTST = 0; // Teste minutos Processa
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -470,6 +470,17 @@ void OnTick()
       SDO_INI_DIA = SALDO_Corrigido();
       DIA_FIM = false;
      }
+   if(XTST > 0)
+     {
+//      if(CountSeconds((PeriodSeconds() / 120), 3) == true)
+     if(CountSeconds((XTST * 60), 3) == true)
+        {
+         if(DIA_FIM == false)
+           {
+            PROCESSA();
+           }
+        }
+     }
    if(DIA_FIM == false)
      {
       OP_FIM = " ";
@@ -570,7 +581,7 @@ void OnTick()
       datetime time_n_candles_atras = TimeCurrent() - (Period() * TEND_qp*60);
       if(DIA_FIM == false)
         {
-         COMPRA_OU_VENDA();
+         PROCESSA();
         }
       DASHBOARD();
       if(CountSeconds(3600, 2) == true)
@@ -614,7 +625,7 @@ int Orders_ON()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-void COMPRA_OU_VENDA()
+void PROCESSA()
   {
    string L = LATERALIZADO();
    if(L != "L")
