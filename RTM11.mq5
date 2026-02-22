@@ -74,7 +74,7 @@ input double Threshold_TC     = 10.0;       // Tamanho médio mínimo do candle 
 input double Threshold_PT     = 70.0;       // Pontuação mínima para sinal de entrada (ajuste no otimizador)
 input double Lote             = 0.10;       // Tamanho do lote fixo (ajuste conforme sua conta)
 input int    Slippage         = 3;          // Deslizamento máximo permitido
-input bool XTRS = false; // Trailing stops
+input int  XTRS = 2; // Trailing stops (0,1,2)
 input int XTST = 0; // Teste minutos Processa
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -472,8 +472,8 @@ void OnTick()
      }
    if(XTST > 0)
      {
-//      if(CountSeconds((PeriodSeconds() / 120), 3) == true)
-     if(CountSeconds((XTST * 60), 3) == true)
+      //      if(CountSeconds((PeriodSeconds() / 120), 3) == true)
+      if(CountSeconds((XTST * 60), 3) == true)
         {
          if(DIA_FIM == false)
            {
@@ -2227,19 +2227,22 @@ void TRAILS()
                     }
                  }
               }
-            if((SIT_LIMITE == " ") && (XTRS == true))
+            if((SIT_LIMITE == " ") && (XTRS > 0))
               {
                VslPosition = slPosition;
                double gap = 0;
+               double tcl = 0;
                if((OP == 1) && (SymbolInfoDouble(Symbol(),SYMBOL_BID) > VTS_valop+gap) && (slPosition < VTS_valop))
                  {
                   VslPosition = VTS_valop;
-                  TMPslPosition = NormalizeDouble(fmax(TMPslPosition, VslPosition),2);
+                  tcl = NormalizeDouble(fmax(TMPslPosition, VslPosition),2);
+                  TMPslPosition = tcl;
                  }
                if((OP == 2) && (SymbolInfoDouble(Symbol(),SYMBOL_ASK) < VTS_valop-gap) && (slPosition > VTS_valop))
                  {
                   VslPosition = VTS_valop;
-                  TMPslPosition = NormalizeDouble(fmax(TMPslPosition, VslPosition),2);
+                  tcl = NormalizeDouble(fmin(TMPslPosition, VslPosition),2);
+                  TMPslPosition = tcl;
                  }
                if((OP == 1) && (TMPslPosition > (slPosition + gap)))
                  {
@@ -2257,24 +2260,24 @@ void TRAILS()
                      NEWslPosition = slPosition;
                     }
                  }
-               string atn = " ";
+               if((XTRS == 2) && (OP == 1) && (NEWslPosition < openPosition))
+                 {
+                  NEWslPosition = slPosition;
+                 }
+               if((XTRS == 2) && (OP == 2) && (NEWslPosition > openPosition))
+                 {
+                  NEWslPosition = slPosition;
+                 }
                if(VslPosition != OslPosition)
                  {
-                  atn = "<<<<<<<<<";
+                  Print("TRAILS "
+                        ," OP ",OP
+                        ," ASK ",SymbolInfoDouble(Symbol(),SYMBOL_ASK)
+                        ," BID ",SymbolInfoDouble(Symbol(),SYMBOL_BID)
+                        ," valop ",VTS_valop
+                        ," slPos ",slPosition
+                        ," VslPos ",VslPosition                                                                                                                                       );
                  }
-               /*
-                              //T Print("TRAILS "
-                                    ," OP ",OP
-                                    ," ASK ",SymbolInfoDouble(Symbol(),SYMBOL_ASK)
-                                    ," BID ",SymbolInfoDouble(Symbol(),SYMBOL_BID)
-                                    ," valop ",VTS_valop
-                                    ," slPos ",slPosition
-                                    ," VslPos ",VslPosition
-                                    ," TMPslPos ",TMPslPosition
-                                    ," NEWslPos ",NEWslPosition
-                                    ," ",atn
-                                   );
-               */
                if((NEWslPosition != slPosition) || (NEWtpPosition != tpPosition))
                  {
                   //   //T Print("NSL ",OP," ",slPosition," ",DoubleToString(NEWslPosition,2)," O ",VTS_valop," C ",CurPrice);
