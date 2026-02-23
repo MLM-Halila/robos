@@ -5,15 +5,23 @@
 #property strict
 #property copyright "Tradestars"
 #property link      "https://www.mql5.com"
-#property description "RTM08N"
+#property description "RTM11"
+
 #include <Trade\PositionInfo.mqh>
 #include <Trade\Trade.mqh>
 #include <Generic\HashMap.mqh>
 #include <MovingAverages.mqh>
 #include <Trade\DealInfo.mqh>
-CDealInfo      m_deal;                       // object of CDealInfo class
+CDealInfo      m_deal;
+CPositionInfo  m_position;              // trade position object
+
+
+
+CTrade          m_trade;
+#import "TelegramService.ex5"
 int SendMessage(string const token, string chatId,string text);
 #import
+
 //input
 string InpToken="1617382308:AAEmQf9aWNwVrjnbdCY0Ni8bvkBc3E6VBVI";//Token do bot que esta no nosso grupo
 //input
@@ -27,6 +35,7 @@ string GroupChatId="-564508963";
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM11";
 sinput string Versão ="1.11IF";                  //Gold H1 100k > 5,182M
+input bool MandaTelegram       = false;       // MSG Telegram
 input
 double SALDO_DISPONIVEL          = 0000;           // Saldo Disponivel para o robo
 input
@@ -53,6 +62,10 @@ input
 double RISCO_MAX_LOSS    =  15;    //Risco Maximo em cada LOSS (USD)
 input
 double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
+input
+double F_PRG_MAX_USD_GAIN = 00;  //%  PRG Max USD SALDO GAIN
+input
+double F_PRG_MAX_USD_LOSS = 00;  //%  PRG Max USD SALDO LOSS
 input
 double F_DIA_MAX_USD_LOSS = 0;  //%  Max USD DIA LOSS (Fecha dia)
 input
@@ -81,11 +94,13 @@ input int XTST = 0; // Teste minutos Processa
 //+------------------------------------------------------------------+
 double SL_SIZE    =  2000;    // Tamanho maximo do LOSS (USD)
 double MAX_LOTE = 5;          // Lote maximo para operar
+double PRG_MAX_USD_GAIN = 0;  // Max perc PRG GAIN (REMOVE)
+double PRG_MAX_USD_LOSS = 0;  // Max perc PRG LOSS (REMOVE)
 double DIA_MAX_USD_LOSS = 0;  // Max USD DIA LOSS (Fecha dia)
 double CUR_MAX_USD_GAIN = 0;  // OP Max USD SALDO GAIN
 double CUR_MAX_USD_LOSS = 0;  // OP Max USD SALDO LOSS
 double MENORpc = 999999;
-bool MandaTelegram       = false;       // Usar Telegram
+
 string OutroAtivo = "="; // Outro ativo para tendência
 bool Xtend = false; //Usar tendência
 int TT_media_tend = 21; //Media para a tendência
@@ -145,7 +160,9 @@ TradeCalcResult calcX;
 //input
 double risco_maximo =    10;             // Percent. máximo de risco sobre Saldo Disponivel
 
-//input
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 double DIA_MAX_Perc_GAIN = 10000;  // Max perc DIA GAINS (Fecha dia)
 //input
 double DIA_MAX_Perc_LOSS = 10000;  // Max perc DIA LOSS (Fecha dia)
@@ -259,8 +276,6 @@ double atr;                             // Volatilidade (ATR)
 double atr_value;                       // Valor do ATR
 int tickets[10];                        // Array para tickets das ordens abertas
 int O_magic_number;                     // Magic number
-CPositionInfo  m_position;              // trade position object
-CTrade         *m_trade;
 ENUM_ORDER_TYPE_FILLING filling_type = ORDER_FILLING_IOC;
 string SYMB =" ";
 string Oque =" ";
@@ -270,6 +285,7 @@ double V_CURRENT_ASK = 0;
 double V_CURRENT_BID = 0;
 int Q_Oper = 0;
 int Q_TRs = 0;
+double FIRST_SDO_ROBO = 0;
 double SDO_INI_ROBO = 0;
 double SDO_CANDLE_A = 0;
 ENUM_TIMEFRAMES tempoG;
@@ -340,7 +356,7 @@ int OnInit()
    Q_TRs = 0;
    SALDO_Rev();
    SDO_INI_ROBO = SALDO_Corrigido();
-//   //T Print("SDO_INI ",SDO_INI_ROBO);
+   FIRST_SDO_ROBO = SDO_INI_ROBO;
    TimeToStruct(TimeCurrent(),lastDate);
    SDO_INI_DIA = SALDO_Corrigido();
    SDO_INI_CUR = SALDO_Corrigido();
@@ -379,16 +395,17 @@ int OnInit()
    buy_price = highest_high;
    sell_price = lowest_low;
    SDO_CANDLE_A = SALDO_Corrigido();
-   double SDO1 = SALDO_Corrigido();
-   SL_SIZE = NormalizeDouble((SDO1 * RISCO_MAX_LOSS / 100),2);
+   SL_SIZE = NormalizeDouble((FIRST_SDO_ROBO * RISCO_MAX_LOSS / 100),2);
    if(SL_SIZE == 0)
      {
-      SL_SIZE = NormalizeDouble((SDO1 * 10 / 100),2);
+      SL_SIZE = NormalizeDouble((FIRST_SDO_ROBO * 10 / 100),2);
      }
-   MAX_LOTE = NormalizeDouble((SDO1 * F_MAX_LOTE / 100),2);
-   DIA_MAX_USD_LOSS = NormalizeDouble((SDO1 * F_DIA_MAX_USD_LOSS / 100),2);
-   CUR_MAX_USD_GAIN = NormalizeDouble((SDO1 * F_CUR_MAX_USD_GAIN / 100),2);
-   CUR_MAX_USD_LOSS = NormalizeDouble((SDO1 * F_CUR_MAX_USD_LOSS / 100),2);
+   MAX_LOTE = NormalizeDouble((FIRST_SDO_ROBO * F_MAX_LOTE / 100),2);
+   PRG_MAX_USD_LOSS = NormalizeDouble((FIRST_SDO_ROBO * F_PRG_MAX_USD_LOSS / 100),2);
+   PRG_MAX_USD_GAIN = NormalizeDouble((FIRST_SDO_ROBO * F_PRG_MAX_USD_GAIN / 100),2);
+   DIA_MAX_USD_LOSS = NormalizeDouble((FIRST_SDO_ROBO * F_DIA_MAX_USD_LOSS / 100),2);
+   CUR_MAX_USD_GAIN = NormalizeDouble((FIRST_SDO_ROBO * F_CUR_MAX_USD_GAIN / 100),2);
+   CUR_MAX_USD_LOSS = NormalizeDouble((FIRST_SDO_ROBO * F_CUR_MAX_USD_LOSS / 100),2);
    MOSTRA();
 // LATERAL
    atr_handle    = iATR(_Symbol,_Period,14);
@@ -780,8 +797,9 @@ void PROCESSA()
               {
                if(NWOP == 0)
                  {
-                  double dist;
-                  bool  ma_up, price_above;
+                  double dist=0;
+                  bool ma_up = false; 
+                  bool price_above = false;
                   NWOP = GetMeanReversionSignal(55, PERIOD_CURRENT, dist, ma_up, price_above);
                  }
               }
@@ -928,8 +946,9 @@ void PROCESSA()
                  {
                   if(NWOP == 0)
                     {
-                     double dist;
-                     bool  ma_up, price_above;
+                     double dist = 0;
+                     bool ma_up = false; 
+                     bool price_above = false;
                      NWOP = GetMeanReversionSignal(55, PERIOD_CURRENT, dist, ma_up, price_above);
                     }
                  }
@@ -1024,6 +1043,7 @@ void PROCESSA()
               {
                Close_ALL_X(OOC);
               }
+            Print ("OP.sr > ",NWOP);
             if(NWOP == 1)
               {
                OrderCOMPRA();
@@ -1384,7 +1404,7 @@ void TelMsg()
 //   //T Print(Telegram_Message);
    if(MandaTelegram == true)
      {
-      //      SendMessage(InpToken, GroupChatId, Telegram_Message);
+      SendMessage(InpToken, GroupChatId, Telegram_Message);
      }
   }
 //+------------------------------------------------------------------+
@@ -1475,6 +1495,24 @@ double SALDO_Corrigido()
   {
    double N;
    N =AccountInfoDouble(ACCOUNT_EQUITY) - INVERSO_SALDOINI - STR_SDO_SALVO;
+   if(PRG_MAX_USD_LOSS != 0)
+     {
+      if((N - FIRST_SDO_ROBO) <= -PRG_MAX_USD_LOSS)
+        {
+         Print("Saldo AC < Minimo");
+         Close_all_Orders();
+         ExpertRemove();
+        }
+     }
+   if(PRG_MAX_USD_GAIN != 0)
+     {
+      if((N - FIRST_SDO_ROBO) >= PRG_MAX_USD_GAIN)
+        {
+         Print("Saldo AC > Maximo");
+         Close_all_Orders();
+         ExpertRemove();
+        }
+     }
    return N;
   }
 //+------------------------------------------------------------------+
@@ -2276,7 +2314,7 @@ void TRAILS()
                         ," BID ",SymbolInfoDouble(Symbol(),SYMBOL_BID)
                         ," valop ",VTS_valop
                         ," slPos ",slPosition
-                        ," VslPos ",VslPosition                                                                                                                                       );
+                        ," VslPos ",VslPosition);
                  }
                if((NEWslPosition != slPosition) || (NEWtpPosition != tpPosition))
                  {
