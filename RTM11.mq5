@@ -34,10 +34,14 @@ string GroupChatId="-564508963";
 // PARA BTCUSD H2
 //+------------------------------------------------------------------+
 sinput string   Robo = "RTM11";
-sinput string Versão ="1.11IF";                  //Gold H1 100k > 5,182M
-input bool MandaTelegram       = false;       // MSG Telegram
+sinput string Versão ="1.2";                  // 20 a 24 GOLD H1, so lucro
+
+input bool            MandaTelegram        = false;  // Enviar mensagens via Telegram
+input int             SEGS_MSG             = 1200;     // Tempo entre mensagens (segundos)
+input string          RES_MSG              = "0";   // Prefixo da mensagem Telegram
+
 input
-double SALDO_DISPONIVEL          = 0000;           // Saldo Disponivel para o robo
+double SALDO_DISPONIVEL          = 100;           // Saldo Disponivel para o robo
 input
 int METOD_1                 = 7;           //Metodo
 input
@@ -59,13 +63,13 @@ int LimLAT = 85; //Limite indicador lateralização
 input
 int XPROP = 2; //Proporcional ao saldo 0, 1, 2
 input
-double RISCO_MAX_LOSS    =  15;    //Risco Maximo em cada LOSS (USD)
+double RISCO_MAX_LOSS    =  30;    //Risco Maximo em cada LOSS (USD)
 input
 double F_MAX_LOTE = 0.06;          //%  Lote maximo para operar
 input
 double F_PRG_MAX_USD_GAIN = 00;  //%  PRG Max USD SALDO GAIN
 input
-double F_PRG_MAX_USD_LOSS = 00;  //%  PRG Max USD SALDO LOSS
+double F_PRG_MAX_USD_LOSS = 50;  //%  PRG Max USD SALDO LOSS
 input
 double F_DIA_MAX_USD_LOSS = 0;  //%  Max USD DIA LOSS (Fecha dia)
 input
@@ -100,7 +104,8 @@ double DIA_MAX_USD_LOSS = 0;  // Max USD DIA LOSS (Fecha dia)
 double CUR_MAX_USD_GAIN = 0;  // OP Max USD SALDO GAIN
 double CUR_MAX_USD_LOSS = 0;  // OP Max USD SALDO LOSS
 double MENORpc = 999999;
-
+double SALDO_Inicial = 0;
+double SALDO_Anterior = 0;
 string OutroAtivo = "="; // Outro ativo para tendência
 bool Xtend = false; //Usar tendência
 int TT_media_tend = 21; //Media para a tendência
@@ -352,6 +357,8 @@ int OnInit()
    O_magic_number = MathRand();
    m_trade  = new CTrade();
    m_trade.SetExpertMagicNumber(O_magic_number);
+   SALDO_Inicial = 0;
+   SALDO_Anterior = 0;
    Q_Oper = 0;
    Q_TRs = 0;
    SALDO_Rev();
@@ -385,7 +392,7 @@ int OnInit()
    Saldo_p_ant = 0;
    MaiorPERC = 0;
    MenorPERC = 0;
-   DASHBOARD();
+   DASHBOARD(0);
    V_CURRENT_ASK = SymbolInfoDouble(Symbol(),SYMBOL_ASK);
    V_CURRENT_BID = SymbolInfoDouble(Symbol(),SYMBOL_BID);
    SPREAD = V_CURRENT_ASK - V_CURRENT_BID;
@@ -442,11 +449,14 @@ void OnDeinit(const int reason)
 void OnTick()
   {
    qm++;
-   if(CountSeconds(10, 9) == true)
+   if(CountSeconds(SEGS_MSG, 9) == true)
+     {
+      TelMsg();
+     }
+   if(CountSeconds(10, 4) == true)
      {
       string LA=LATERALIZADO();
      }
-
    if(Quant_Dias(dias, lastCheck))
      {
       qpr ++;
@@ -599,11 +609,6 @@ void OnTick()
       if(DIA_FIM == false)
         {
          PROCESSA();
-        }
-      DASHBOARD();
-      if(CountSeconds(3600, 2) == true)
-        {
-         TelMsg();
         }
      }
   }
@@ -798,7 +803,7 @@ void PROCESSA()
                if(NWOP == 0)
                  {
                   double dist=0;
-                  bool ma_up = false; 
+                  bool ma_up = false;
                   bool price_above = false;
                   NWOP = GetMeanReversionSignal(55, PERIOD_CURRENT, dist, ma_up, price_above);
                  }
@@ -947,7 +952,7 @@ void PROCESSA()
                   if(NWOP == 0)
                     {
                      double dist = 0;
-                     bool ma_up = false; 
+                     bool ma_up = false;
                      bool price_above = false;
                      NWOP = GetMeanReversionSignal(55, PERIOD_CURRENT, dist, ma_up, price_above);
                     }
@@ -1043,7 +1048,7 @@ void PROCESSA()
               {
                Close_ALL_X(OOC);
               }
-            Print ("OP.sr > ",NWOP);
+            Print("OP.sr > ",NWOP);
             if(NWOP == 1)
               {
                OrderCOMPRA();
@@ -1390,45 +1395,46 @@ void TelMsg()
   {
    long NConta = (AccountInfoInteger(ACCOUNT_LOGIN));
    string XConta = DoubleToString(NConta,0);
-   double prc=SALDO_Corrigido() * 100 / SDO_INI_ROBO;
+   double SALDO_Atual = SALDO_Corrigido();
+//   Print(SALDO_Anterior," ",SALDO_Atual);
+   if(SALDO_Inicial == 0)
+     {
+      SALDO_Inicial = SALDO_Atual;
+     }
+   if(SALDO_Anterior == 0)
+     {
+      SALDO_Anterior = SALDO_Atual;
+     }
    string Telegram_Message=
-      VER+" "+
-      XConta+" "+
-      SYMB+" "+
-      IntegerToString(Q_Oper)+" "+
-      IntegerToString(Q_TRs)+" "+
-      "P "+DoubleToString(SALDO_Corrigido(),2)+" "+
-      DoubleToString(prc,2)+" "+
-      DoubleToString(MaiorPERC,2)+" "+
-      DoubleToString(MenorPERC,2)+" ";
-//   //T Print(Telegram_Message);
+      RES_MSG+" "+
+      XConta+
+      "  "+DoubleToString((SALDO_Atual-SALDO_Inicial),2);
+   DASHBOARD((SALDO_Atual-SALDO_Inicial));
    if(MandaTelegram == true)
      {
+      Print(Telegram_Message);
       SendMessage(InpToken, GroupChatId, Telegram_Message);
      }
+   SALDO_Anterior = SALDO_Atual;
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-void TelMsgXXX()
+void DASHBOARD(double res)
   {
-   long NConta = (AccountInfoInteger(ACCOUNT_LOGIN));
-   string XConta = DoubleToString(NConta,0);
-   double prc=SALDO_Corrigido() * 100 / SDO_INI_ROBO;
-   string Telegram_Message=
-      VER+" "+
-      XConta+" "+
-      SYMB+" "+
-      IntegerToString(Q_Oper)+" "+
-      IntegerToString(Q_TRs)+" "+
-      "P "+DoubleToString(SALDO_Corrigido(),2)+" "+
-      DoubleToString(prc,2)+" "+
-      " CANCELADO";
-//   //T Print(Telegram_Message);
-   if(MandaTelegram == true)
-     {
-      //      SendMessage(InpToken, GroupChatId, Telegram_Message);
-     }
+   string label_name="Sit";
+   double var = NormalizeDouble(res,2);
+   ObjectCreate(0,label_name,OBJ_LABEL,0,0,0);
+   ObjectSetInteger(0,label_name,OBJPROP_XDISTANCE,300);
+   ObjectSetInteger(0,label_name,OBJPROP_YDISTANCE,20);
+   ObjectSetInteger(0,label_name,OBJPROP_COLOR,clrWhite);
+   string tmpmsg = DoubleToString(var,2);
+   ObjectSetString(0,label_name,OBJPROP_TEXT,tmpmsg);
+   ObjectSetString(0,label_name,OBJPROP_FONT,"arial");
+   ObjectSetInteger(0,label_name,OBJPROP_FONTSIZE,30);
+   ObjectSetDouble(0,label_name,OBJPROP_ANGLE,0);
+   ObjectSetInteger(0,label_name,OBJPROP_SELECTABLE,false);
+   ChartRedraw(0);
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -1454,39 +1460,6 @@ bool CountSeconds(int seg, int quem)
      {
       return false;
      }
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-void DASHBOARD()
-  {
-   string label_name="Sit";
-   double prc=SALDO_Corrigido() * 100 / SDO_INI_ROBO;
-   if(Saldo_p_ant == 0)
-     {
-      Saldo_p_ant = SALDO_Corrigido();
-     }
-   double var = ((SALDO_Corrigido() / Saldo_p_ant) * 100) - 100;
-   /*
-      ObjectCreate(0,label_name,OBJ_LABEL,0,0,0);
-      ObjectSetInteger(0,label_name,OBJPROP_XDISTANCE,300);
-      ObjectSetInteger(0,label_name,OBJPROP_YDISTANCE,20);
-      ObjectSetInteger(0,label_name,OBJPROP_COLOR,clrWhite);
-
-         string tmpmsg = IntegerToString(Q_Oper)+" "+
-                         IntegerToString(Q_TRs)+" "+
-                         DoubleToString(SALDO_Corrigido(),2)+" "+
-                         DoubleToString(prc,2)+" "+
-
-      string tmpmsg = DoubleToString(SALDO_Corrigido(),2);
-      ObjectSetString(0,label_name,OBJPROP_TEXT,tmpmsg);
-      ObjectSetString(0,label_name,OBJPROP_FONT,"arial");
-      ObjectSetInteger(0,label_name,OBJPROP_FONTSIZE,20);
-      ObjectSetDouble(0,label_name,OBJPROP_ANGLE,0);
-      ObjectSetInteger(0,label_name,OBJPROP_SELECTABLE,false);
-      ChartRedraw(0);
-   */
-   Saldo_p_ant = SALDO_Corrigido();
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
