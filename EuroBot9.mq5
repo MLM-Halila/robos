@@ -24,14 +24,14 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot9";
-sinput string Versao ="1.4";                  //gold m30 25/01 a 03/06
+sinput string Versao ="1.51";                  //gold H1 18/02 a 25/02 (1 SEM) 100>3793 (97)
 input group " "
 input group "PARAMETROS"
 input double          INISALDO            = 0;   // Saldo Base
 input int             Pontos_Reabre_OP_em_loss      = 10;     // Pontos para reentrada de operação
-input int             Pontos_Tot_Fecha    = 45;     // Pontos para fechar todas as posições
+input int             Pontos_Tot_Fecha    = 40;     // Pontos para fechar todas as posições
 input int             Max_oper            = 20;     // Máximo de operações simultâneas
-input double          LOTE               = 0.2;   // Lote base (inicial)
+input double          LOTE               = 0.09;   // Lote base (inicial)
 input group " "
 input group "NOTIFICACOES TELEGRAM"
 input string InpToken="1617382308:AAEmQf9aWNwVrjnbdCY0Ni8bvkBc3E6VBVI";//Token do bot que esta no nosso grupo
@@ -43,9 +43,9 @@ input string          VER                  = "X2";   // Prefixo da mensagem Tele
 input group " "
 input group "PROVISORIOS"
 input bool picos = true;     // Usa picos e fundos
-input int    SampleSeconds      = 10;     // S segundos entre amostras
-input int    LookbackPeriods    = 14;     // X períodos para detectar pico/fundo
-input double MaxDrawdownPercent = 15.0;   // % de drawdown máximo → parar
+input int    SampleSeconds      = 30;     // S segundos entre amostras
+input int    LookbackPeriods    = 8;     // X períodos para detectar pico/fundo
+input double MaxDrawdownPercent = 10.0;   // % de drawdown máximo → parar
 input double PeakDipPercent     = 0.2;    // % de queda após pico para fechar
 input double TroughRisePercent  = 8;    // % de recuperação após fundo
 input double SpeedThresholdPercent = 0.4; // % de variação por amostra para considerar "rápido"
@@ -67,7 +67,7 @@ input bool USA_M_menor = false; //Confirma com media timeframe menor
 input bool USA_M_maior = false; //Confirma com media timeframe menor
 input int Mquant = 50; //Quant medias
 input
-bool inverso             = true;       // Inverter as operações
+bool inverso             = false;       // Inverter as operações
 input int OP_ONLY = 0; //OP ONLY, 0,1,2
 input
 int testa             = 0;       // TESTA
