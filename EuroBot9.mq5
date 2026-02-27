@@ -24,7 +24,7 @@ int SendMessage(string const token, string chatId,string text);
 
 // 01 a 16 jan, gold, m30, 1865,09 em 37 ops
 sinput string   Robo = "EuroBot9";
-sinput string Versao ="1.51";                  //gold H1 18/02 a 25/02 (1 SEM) 100>3793 (97)
+sinput string Versao ="1.6";                  //gold H1 18/02 a 25/02 (1 SEM) 100>3793 (97)
 input group " "
 input group "PARAMETROS"
 input double          INISALDO            = 0;   // Saldo Base
@@ -71,6 +71,10 @@ bool inverso             = false;       // Inverter as operações
 input int OP_ONLY = 0; //OP ONLY, 0,1,2
 input
 int testa             = 0;       // TESTA
+input
+int PSA            = 60;       // Tst desistencia PSA
+input
+int PSC            = 30;       // Tst desistencia PSC
 input int SemMov = 5; //Opera para não ficar parado
 input double MX_l = 00; //MX_L
 input double MX_g = 00; //MX_g
@@ -120,6 +124,9 @@ double SALDO_Anterior = 0;
 double SALDOINI = 0;
 double SALDO_1 = 0;
 double INVERSO_SALDOINI = 0;
+double SDX_ini = 0;
+double SDX_can = 0;
+double SDX_ant = 0;
 double CLote = 0;
 int NWOP = 0;
 int SeqOPer1 = 0;
@@ -167,6 +174,9 @@ int OnInit()
       SALDOINI = SALDO_1;
      }
    Print("X saldo init ",SALDOINI);
+   SDX_ini = SALDO_Corrigido();
+   SDX_can = SDX_ini;
+   SDX_ant = SDX_ini;
    PropLote = LOTE * 100 / SALDO_1;
    double CCCC = NormalizeDouble(LOTE,2);
    CLote = LOTE_Prop();
@@ -216,7 +226,7 @@ void OnTick()
       double currentEquity = SALDO_Corrigido();
       AddEquityToHistory(currentEquity);
       string action = AnalyzeEquityCurve();
-//      Print("X Equity Curve → Ação sugerida: ", action);
+      //      Print("X Equity Curve → Ação sugerida: ", action);
       if(action == "FECHAR")
         {
          Close_all_Orders(1);
@@ -237,12 +247,13 @@ void OnTick()
      }
    if(CountSeconds(10, 4) == true)
      {
+      Percs();
       SALDO_DISP = SALDO_Corrigido();
       if(SALDO_DISP > MAIORSDO)
         {
          MAIORSDO = SALDO_DISP;
         }
-      Print("X SALDO ",SALDOINI," ",SALDO_DISP," ",MAIORSDO);
+
       if(SALDO_DISP < 0)
         {
          Close_all_Orders(1);
@@ -297,7 +308,7 @@ void OnTick()
          tendencia_lower = EMATrend(21, lower, Mquant);
          if(testa == 2)
            {
-           Tel_ALARM("SALDO "+SALDO_Corrigido()+" TST2 lower, close em loss");
+            Tel_ALARM("SALDO "+SALDO_Corrigido()+" TST2 lower, close em loss");
             Close_all_losing_operations(tendencia_lower);
            }
         }
@@ -338,6 +349,7 @@ void OnTick()
       int GWOP = CheckBollingerSignal(0, Symbol(), upper, 20, 2);
       ChartRedraw();
       Processa();
+      SDX_can = SALDO_Corrigido();
      }
   }
 //+------------------------------------------------------------------+
@@ -1513,7 +1525,28 @@ void AddEquityToHistory(double equity)
 
    EquityHistory[0] = equity;
   }
-
 //+------------------------------------------------------------------+
-
+//|                                                                  |
+//+------------------------------------------------------------------+
+void Percs()
+  {
+   double SDX_cur = SALDO_Corrigido();
+   double P_ini = NormalizeDouble((100*SDX_cur/SDX_ini),2);
+   double P_can = NormalizeDouble((100*SDX_cur/SDX_can),2);
+   double P_ant = NormalizeDouble((100*SDX_cur/SDX_ant),2);
+   Print("X SALDO ","PERCS "," I ",P_ini," C ",P_can," A ",P_ant," Si ",SALDOINI," Sd ",SALDO_DISP," Gt ",MAIORSDO);
+   if((PSA > 0) && (P_ant < PSA))
+     {
+      Close_all_losing_operations(1);
+      Close_all_losing_operations(2);
+      Print("X SALDO ","PERCS ","FECHA PSA");
+     }
+   if((PSC > 0) && (P_can < PSC))
+     {
+      Close_all_losing_operations(1);
+      Close_all_losing_operations(2);
+      Print("X SALDO ","PERCS ","FECHA PSC");
+     }
+   SDX_ant = SDX_cur;
+  }
 //+------------------------------------------------------------------+
